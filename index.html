@@ -45,16 +45,29 @@
         .staff-btn:hover { background: #dbeafe; transform: translateY(-1px); }
         .staff-btn:active { background: #bfdbfe; transform: translateY(0); }
 
-        /* メイン画面：カメラ＆進捗（横長・高さを半分程度に変更） */
-        .top-section { display: flex; gap: 12px; margin-bottom: 12px; flex-direction: column; align-items: stretch; }
-        #reader-container { width: 100%; height: 120px; background: #000; border-radius: 8px; overflow: hidden; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        #reader { width: 100%; height: 100%; }
-        /* html5-qrcode内部のvideoやscan regionをコンテナに合わせて調整 */
-        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
+        /* メイン画面：カメラ＆進捗（映像を歪ませずに自然に収めるレイアウト） */
+        .top-section { display: flex; gap: 12px; margin-bottom: 12px; flex-direction: column; }
+        @media(min-width: 480px) {
+            .top-section { flex-direction: row; align-items: stretch; }
+        }
+        
+        #reader-container { flex: 1; background: #000; border-radius: 8px; overflow: hidden; position: relative; min-height: 180px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+        #reader { width: 100% !important; border: none !important; }
+        /* html5-qrcodeが生成するvideoを、アスペクト比を保ったまま綺麗に収める */
+        #reader video { 
+            object-fit: cover !important; 
+            width: 100% !important; 
+            height: 100% !important; 
+        }
+        /* html5-qrcodeの無駄なボーダーや文字を隠してすっきりさせる */
+        #reader__dashboard_section_csr { display: none; }
 
-        .progress-box { background: white; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--gray-border); padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
-        .progress-label { font-size: 13px; color: var(--text-sub); font-weight: 600; }
-        .progress-num { font-size: 20px; font-weight: 800; color: var(--primary); }
+        .progress-box { background: white; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--gray-border); padding: 12px; width: 100%; min-width: 120px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        @media(min-width: 480px) {
+            .progress-box { width: 130px; }
+        }
+        .progress-num { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+        .progress-label { font-size: 12px; color: var(--text-sub); font-weight: 600; margin-top: 4px; }
 
         .action-buttons { display: flex; gap: 8px; margin-bottom: 16px; }
         .btn { flex: 1; padding: 12px 8px; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
@@ -118,15 +131,15 @@
             </div>
         </div>
 
-        <!-- SCREEN 2: メイン（カメラ横長・薄型 ＆ 進捗ボックス配置） -->
+        <!-- SCREEN 2: メイン（歪み防止カメラ ＆ チェックリスト） -->
         <div id="screen-main" class="screen">
             <div class="top-section">
                 <div id="reader-container">
                     <div id="reader"></div>
                 </div>
                 <div class="progress-box">
-                    <span class="progress-label">完了ポイント</span>
-                    <span class="progress-num" id="progress-text">0/0</span>
+                    <div class="progress-num" id="progress-text">0/0</div>
+                    <div class="progress-label">完了ポイント</div>
                 </div>
             </div>
 
@@ -251,11 +264,12 @@
 
             html5QrCode = new Html5Qrcode("reader");
 
+            // カメラのネイティブ比率を維持した安全な設定
             html5QrCode.start(
                 { facingMode: "environment" },
                 {
                     fps: 10,
-                    qrbox: { width: 150, height: 80 }
+                    qrbox: { width: 180, height: 180 } // 解析用の正方形エリア（比率崩れを防ぐ）
                 },
                 (text) => {
                     checkpoints.forEach(cp => {
