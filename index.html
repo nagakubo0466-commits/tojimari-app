@@ -171,6 +171,7 @@
         let isLightOn = false;
         let lastScannedCode = "";
         let lastScanTime = 0;
+        let isCameraStarting = false;
 
         function playBeepSound() {
             try {
@@ -217,23 +218,32 @@
         }
 
         async function startCamera() {
+            if (isCameraStarting) return;
+            isCameraStarting = true;
+
             if (!html5QrCode) {
                 html5QrCode = new Html5Qrcode("reader");
             }
 
             const config = {
-                fps: 15, // 負荷とスムーズさのバランス
+                fps: 15,
                 qrbox: { width: 180, height: 180 },
                 aspectRatio: 1.333
             };
 
             try {
+                // すでにスキャン中の場合は一度安全に停止してから再開
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+
                 await html5QrCode.start(
                     { facingMode: "environment" },
                     config,
                     (decodedText) => {
                         const now = Date.now();
-                        // 連続スキャン防止フィルタ：同じコードかつ短時間（2.5秒以内）の重複読み取りは無視
+                        // 連続スキャン防止フィルタ：同じコードが2.5秒以内に再検出された場合は無視する
+                        // ストリームやスキャンループ自体は絶対に止めないことで、2個目以降も即座に認識可能にする
                         if (decodedText === lastScannedCode && (now - lastScanTime < 2500)) {
                             return;
                         }
@@ -243,12 +253,13 @@
                         handleQrCodeResult(decodedText);
                     },
                     (errorMessage) => {
-                        // スキャン中の毎フレームエラー（QR未検出など）は無視
+                        // スキャン中の毎フレームの未検出エラーなどは無視
                     }
                 );
             } catch (err) {
                 console.log("カメラ起動エラー:", err);
-                alert("カメラを起動できませんでした。ブラウザのカメラ権限をご確認ください。");
+            } finally {
+                isCameraStarting = false;
             }
         }
 
@@ -265,12 +276,12 @@
             });
 
             if (matched) {
-                // 成功時は停止せずにスキャンを継続するため、ここでは何もしません（連続読取が可能）
+                // スキャン自体は停止させず、そのまま連続して次のQRコードを読める状態を維持
             }
         }
 
         async function toggleLight() {
-            if (!html5QrCode) return;
+            if (!html5QrCode || !html5QrCode.isScanning) return;
             try {
                 isLightOn = !isLightOn;
                 await html5QrCode.applyVideoConstraints({
@@ -346,12 +357,10 @@
         }
 
         async function stopCamera() {
-            if (html5QrCode) {
+            if (html5QrCode && html5QrCode.isScanning) {
                 try {
                     await html5QrCode.stop();
-                } catch (e) {
-                    // 既に停止している場合のエラーを無視
-                }
+                } catch (e) {}
             }
         }
 
