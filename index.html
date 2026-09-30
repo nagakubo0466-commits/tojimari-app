@@ -33,8 +33,8 @@
 
         /* ライブビュー表示領域 */
         #camera-container { width: 100%; height: 180px; background: #000; border-radius: 6px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-        #webcam-video { display: none; }
-        #preview-canvas { width: 100%; height: 100%; object-fit: cover; }
+        #webcam-video { width: 100%; height: 100%; object-fit: cover; }
+        #scan-canvas { display: none; }
 
         /* 中央エリア：ポイント一覧 */
         .checkpoint-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 6px; padding: 8px; }
@@ -87,8 +87,10 @@
         <div id="screen-main" class="screen">
             <div class="top-section">
                 <div id="camera-container">
-                    <video id="webcam-video" playsinline></video>
-                    <canvas id="preview-canvas"></canvas>
+                    <!-- ライブビュー用ビデオ -->
+                    <video id="webcam-video" autoplay playsinline muted></video>
+                    <!-- 軽量サンプリング・解析用キャンバス -->
+                    <canvas id="scan-canvas"></canvas>
                 </div>
                 <div class="camera-status-row">
                     <div class="staff-display-box">
@@ -172,6 +174,7 @@
         let isLightOn = false;
         let videoTrack = null;
         let lastScanTime = 0;
+        let animationFrameId = null;
 
         function playBeepSound() {
             try {
@@ -222,16 +225,16 @@
             isScanning = true;
 
             const video = document.getElementById('webcam-video');
-            const canvas = document.getElementById('preview-canvas');
+            const canvas = document.getElementById('scan-canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
             try {
-                // 画質を適度なサイズ（幅800px目安）に制限して負荷を激減させる
+                // 標準的なHD画質（あるいは適度なサイズ）を要求
                 mediaStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: { ideal: "environment" },
-                        width: { ideal: 800 },
-                        height: { ideal: 600 }
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
                 });
 
@@ -244,20 +247,23 @@
                     if (!isScanning) return;
 
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        // ライブビュー表示用にキャンバスサイズをビデオに合わせる
-                        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-                            canvas.width = video.videoWidth;
-                            canvas.height = video.videoHeight;
+                        // 解析用Canvasのサイズを軽量サイズ（幅640px固定、アスペクト比維持）に調整
+                        const targetWidth = 640;
+                        const targetHeight = Math.floor(video.videoHeight * (targetWidth / video.videoWidth));
+
+                        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+                            canvas.width = targetWidth;
+                            canvas.height = targetHeight;
                         }
 
-                        // 映像を描画
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        // 負荷軽減のため、スキャン間隔を制限（約100msに1回＝秒間10回程度）
+                        // スロットリング処理（約100msごとに解析してCPU負荷を大幅に削減）
                         if (!lastScanTime || timestamp - lastScanTime > 100) {
                             lastScanTime = timestamp;
+
+                            // ビデオから軽量化キャンバスへ描画
+                            ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
                             
-                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
                             const code = jsQR(imageData.data, imageData.width, imageData.height, {
                                 inversionAttempts: "dontInvert"
                             });
@@ -268,14 +274,14 @@
                         }
                     }
 
-                    requestAnimationFrame(scanLoop);
+                    animationFrameId = requestAnimationFrame(scanLoop);
                 };
 
-                requestAnimationFrame(scanLoop);
+                animationFrameId = requestAnimationFrame(scanLoop);
 
             } catch (err) {
                 console.log("カメラ起動エラー:", err);
-                alert("カメラを起動できませんでした。カメラの権限や設定をご確認ください。");
+                alert("カメラを起動できませんでした。ブラウザのカメラ権限をご確認ください。");
             }
         }
 
@@ -292,13 +298,18 @@
             });
 
             if (matched) {
-                // 連続読取防止（1秒間一時停止）
+                // 連続読み取りによる誤作動を防ぐため一時的にスキャンを1.2秒間停止し、その後自動で復帰
                 isScanning = false;
                 setTimeout(() => {
                     if (document.getElementById('screen-main').classList.contains('active')) {
                         isScanning = true;
+                        // ループが停止している場合に備えて再開
+                        lastScanTime = 0;
+                        if (!animationFrameId) {
+                            startCamera();
+                        }
                     }
-                }, 1000);
+                }, 1200);
             }
         }
 
@@ -317,7 +328,7 @@
                 }
             } catch (err) {
                 isLightOn = !isLightOn;
-                alert("この端末やブラウザではライト機能を利用できません。");
+                alert("お使いの環境ではライト機能を利用できません。");
             }
         }
 
@@ -380,6 +391,10 @@
 
         function stopCamera() {
             isScanning = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
                 mediaStream = null;
