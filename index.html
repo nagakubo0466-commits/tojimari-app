@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>戸締り確認アプリ</title>
-    <!-- 安定かつ高速なQR解析専用ライブラリ (jsQR) の読み込み -->
+    <!-- jsQR ライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,10 +31,10 @@
         .staff-name-highlight { font-size: 13px; font-weight: bold; color: #1a73e8; }
         .progress-box { background: white; border-radius: 6px; border: 1px solid #ddd; padding: 6px 12px; text-align: center; font-size: 14px; font-weight: bold; color: #1a73e8; }
 
-        /* ライブビュー表示領域（解析用ビデオは非表示にし、描画用キャンバスを表示） */
+        /* ライブビュー表示領域 */
         #camera-container { width: 100%; height: 180px; background: #000; border-radius: 6px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-        #webcam-video { display: none; } /* 解析元の高解像度ストリーム（非表示） */
-        #preview-canvas { width: 100%; height: 100%; object-fit: cover; } /* ライブビュー用の描画キャンバス */
+        #webcam-video { display: none; }
+        #preview-canvas { width: 100%; height: 100%; object-fit: cover; }
 
         /* 中央エリア：ポイント一覧 */
         .checkpoint-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 6px; padding: 8px; }
@@ -171,6 +171,7 @@
         let isScanning = false;
         let isLightOn = false;
         let videoTrack = null;
+        let lastScanTime = 0;
 
         function playBeepSound() {
             try {
@@ -216,7 +217,6 @@
             }, 150);
         }
 
-        // カメラ起動と高解像度取得・ライブビュー描画ループ
         async function startCamera() {
             stopCamera();
             isScanning = true;
@@ -226,12 +226,12 @@
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
             try {
-                // フルサイズの高解像度映像を取得
+                // 画質を適度なサイズ（幅800px目安）に制限して負荷を激減させる
                 mediaStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: { ideal: "environment" },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
+                        width: { ideal: 800 },
+                        height: { ideal: 600 }
                     }
                 });
 
@@ -240,28 +240,31 @@
 
                 videoTrack = mediaStream.getVideoTracks()[0];
 
-                // ライブビュー描画とQR解析のメインループ
-                const scanLoop = () => {
+                const scanLoop = (timestamp) => {
                     if (!isScanning) return;
 
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        // キャンバスのサイズをビデオの実際の解像度（高画質）に合わせる
+                        // ライブビュー表示用にキャンバスサイズをビデオに合わせる
                         if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                             canvas.width = video.videoWidth;
                             canvas.height = video.videoHeight;
                         }
 
-                        // フルサイズの映像を描画（UI側はCSSで自動縮小表示されるため綺麗で軽快）
+                        // 映像を描画
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        // 高解像度な画像データからQRコードを解析
-                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: "dontInvert"
-                        });
+                        // 負荷軽減のため、スキャン間隔を制限（約100msに1回＝秒間10回程度）
+                        if (!lastScanTime || timestamp - lastScanTime > 100) {
+                            lastScanTime = timestamp;
+                            
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: "dontInvert"
+                            });
 
-                        if (code) {
-                            handleQrCodeResult(code.data);
+                            if (code) {
+                                handleQrCodeResult(code.data);
+                            }
                         }
                     }
 
@@ -289,13 +292,13 @@
             });
 
             if (matched) {
-                // 連続読取防止のわずかなインターバル（0.8秒間スキャンを一時停止）
+                // 連続読取防止（1秒間一時停止）
                 isScanning = false;
                 setTimeout(() => {
                     if (document.getElementById('screen-main').classList.contains('active')) {
                         isScanning = true;
                     }
-                }, 800);
+                }, 1000);
             }
         }
 
