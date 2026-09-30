@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>戸締り確認アプリ</title>
-    <!-- html5-qrcode ライブラリの読み込み -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <title>戸締り確認アプリ（フレームキャプチャ方式）</title>
+    <!-- 安定したQRデコード用ライブラリ (jsQR) の読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -34,7 +34,6 @@
         .container { max-width: 600px; margin: 0 auto; padding: 10px; }
         .card { background: white; border-radius: 12px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--gray-border); }
         
-        /* 画面切り替え用クラス */
         .screen { display: none; }
         .screen.active { display: block; }
 
@@ -44,17 +43,16 @@
         .staff-btn { padding: 12px; background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 8px; font-size: 14px; font-weight: 700; color: var(--primary); text-align: center; cursor: pointer; transition: all 0.2s ease; }
         .staff-btn:hover { background: #dbeafe; }
 
-        /* メイン画面：カメラ高さを「180px」に調整して確実に読み取れるようにする */
+        /* メイン画面：歪みのないカメラ表示 ＆ パラパラ漫画プレビュー */
         .top-section { display: flex; gap: 8px; margin-bottom: 8px; align-items: stretch; }
         
-        #reader-container { flex: 1; height: 175px; background: #000; border-radius: 8px; overflow: hidden; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        #reader { width: 100% !important; height: 100% !important; border: none !important; }
-        #reader video { 
-            object-fit: cover !important; 
-            width: 100% !important; 
-            height: 100% !important; 
-        }
-        #reader__dashboard_section_csr { display: none; }
+        #camera-container { flex: 1; height: 180px; background: #000; border-radius: 8px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        
+        /* カメラ生映像（歪み防止のため object-fit: contain または cover を適切に設定） */
+        #webcam-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        /* 照準ガイド枠 */
+        .scan-guide { position: absolute; width: 130px; height: 130px; border: 2px dashed rgba(255, 255, 255, 0.7); border-radius: 12px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35); }
 
         .progress-box { background: white; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--gray-border); padding: 6px 10px; width: 95px; }
         .progress-num { font-size: 20px; font-weight: 800; color: var(--primary); line-height: 1.2; }
@@ -68,9 +66,9 @@
         .btn-finish { background: #e6f4ea; color: var(--success); border: 1px solid #a7f3d0; }
         .btn-finish:not(:disabled) { background: var(--success); color: white; }
 
-        /* チェックリスト領域（スクロールして一覧を確認可能） */
+        /* チェックリスト領域 */
         .section-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
-        .checkpoint-container { max-height: 270px; overflow-y: auto; border: 1px solid var(--gray-border); border-radius: 6px; background: white; }
+        .checkpoint-container { max-height: 260px; overflow-y: auto; border: 1px solid var(--gray-border); border-radius: 6px; background: white; }
         .category-header { background: #f1f5f9; color: var(--text-main); font-weight: 700; font-size: 11px; padding: 5px 10px; border-bottom: 1px solid var(--gray-border); border-top: 1px solid var(--gray-border); }
         .category-header:first-child { border-top: none; }
         
@@ -120,11 +118,14 @@
             </div>
         </div>
 
-        <!-- SCREEN 2: メイン（程よい大きさのカメラ ＆ 一覧） -->
+        <!-- SCREEN 2: メイン画面（自前フレームキャプチャ方式） -->
         <div id="screen-main" class="screen">
             <div class="top-section">
-                <div id="reader-container">
-                    <div id="reader"></div>
+                <div id="camera-container">
+                    <video id="webcam-video" autoplay playsinline muted></video>
+                    <div class="scan-guide"></div>
+                    <!-- 解析用の隠しキャンバス（歪みなしピクセル抽出用） -->
+                    <canvas id="snapshot-canvas" style="display: none;"></canvas>
                 </div>
                 <div class="progress-box">
                     <div class="progress-num" id="progress-text">0/0</div>
@@ -201,7 +202,8 @@
         ];
 
         let currentStaff = "";
-        let html5QrCode = null;
+        let mediaStream = null;
+        let scanInterval = null;
 
         function playBeepSound() {
             try {
@@ -244,35 +246,56 @@
             startCamera();
         }
 
-        function startCamera() {
-            if (html5QrCode) {
-                try {
-                    html5QrCode.stop().catch(() => {});
-                } catch(e) {}
+        // カメラ起動 ＆ パラパラ漫画（フレームキャプチャ）ループの開始
+        async function startCamera() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+                const videoEl = document.getElementById('webcam-video');
+                videoEl.srcObject = mediaStream;
+                
+                // ビデオの準備ができたらパラパラ漫画スキャンを開始
+                videoEl.onloadedmetadata = () => {
+                    videoEl.play();
+                    if (scanInterval) clearInterval(scanInterval);
+                    scanInterval = setInterval(captureAndParseFrame, 200); // 0.2秒ごとにフレーム解析
+                };
+            } catch (err) {
+                console.error("カメラ起動エラー:", err);
+                alert("カメラの起動に失敗しました。カメラの権限を確認してください。");
             }
+        }
 
-            html5QrCode = new Html5Qrcode("reader");
+        // パラパラ漫画方式：フレームをCanvasに切り出してjsQRで解析
+        function captureAndParseFrame() {
+            const videoEl = document.getElementById('webcam-video');
+            const canvas = document.getElementById('snapshot-canvas');
+            if (!videoEl || videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) return;
 
-            html5QrCode.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 200, height: 200 } // しっかり読み取れる大きさに復元
-                },
-                (text) => {
-                    checkpoints.forEach(cp => {
-                        if (cp.id === text && cp.status === 0) {
-                            cp.status = 1;
-                            renderCheckpoints();
-                            playBeepSound();
-                            if (navigator.vibrate) navigator.vibrate(100);
-                        }
-                    });
-                },
-                (errorMessage) => {}
-            ).catch(err => {
-                console.log("カメラ自動起動エラー:", err);
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = videoEl.videoWidth;
+            canvas.height = videoEl.videoHeight;
+
+            // 歪みゼロの正確なピクセル描画
+            context.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert",
             });
+
+            if (code) {
+                const scannedId = code.data;
+                checkpoints.forEach(cp => {
+                    if (cp.id === scannedId && cp.status === 0) {
+                        cp.status = 1;
+                        renderCheckpoints();
+                        playBeepSound();
+                        if (navigator.vibrate) navigator.vibrate(100);
+                    }
+                });
+            }
         }
 
         function renderCheckpoints() {
@@ -329,12 +352,13 @@
         }
 
         function stopCamera() {
-            if (html5QrCode) {
-                try {
-                    html5QrCode.stop().then(() => { html5QrCode = null; }).catch(() => { html5QrCode = null; });
-                } catch (e) {
-                    html5QrCode = null;
-                }
+            if (scanInterval) {
+                clearInterval(scanInterval);
+                scanInterval = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
             }
         }
 
