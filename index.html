@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>戸締り確認アプリ</title>
-    <!-- jsQR ライブラリの読み込み -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- html5-qrcode ライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -31,10 +31,12 @@
         .staff-name-highlight { font-size: 13px; font-weight: bold; color: #1a73e8; }
         .progress-box { background: white; border-radius: 6px; border: 1px solid #ddd; padding: 6px 12px; text-align: center; font-size: 14px; font-weight: bold; color: #1a73e8; }
 
-        /* ライブビュー表示領域 */
-        #camera-container { width: 100%; height: 180px; background: #000; border-radius: 6px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-        #webcam-video { width: 100%; height: 100%; object-fit: cover; }
-        #scan-canvas { display: none; }
+        /* ライブビュー表示領域 (html5-qrcode コンテナ) */
+        #reader { width: 100%; height: 210px; background: #000; border-radius: 6px; overflow: hidden; position: relative; border: none !important; }
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 6px; }
+        /* html5-qrcodeの余計なUI/テキストを非表示にする */
+        #reader__dashboard, #reader__dashboard_section_csr, #reader__header_fps { display: none !important; }
+        #reader img { display: none !important; }
 
         /* 中央エリア：ポイント一覧 */
         .checkpoint-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 6px; padding: 8px; }
@@ -86,12 +88,8 @@
         <!-- SCREEN 2: メイン画面 -->
         <div id="screen-main" class="screen">
             <div class="top-section">
-                <div id="camera-container">
-                    <!-- ライブビュー用ビデオ -->
-                    <video id="webcam-video" autoplay playsinline muted></video>
-                    <!-- 軽量サンプリング・解析用キャンバス -->
-                    <canvas id="scan-canvas"></canvas>
-                </div>
+                <!-- html5-qrcode用コンテナ -->
+                <div id="reader"></div>
                 <div class="camera-status-row">
                     <div class="staff-display-box">
                         <span>担当: <span id="display-staff-name" class="staff-name-highlight">未選択</span></span>
@@ -169,12 +167,10 @@
         ];
 
         let currentStaff = "";
-        let mediaStream = null;
-        let isScanning = false;
+        let html5QrCode = null;
         let isLightOn = false;
-        let videoTrack = null;
+        let lastScannedCode = "";
         let lastScanTime = 0;
-        let animationFrameId = null;
 
         function playBeepSound() {
             try {
@@ -217,68 +213,39 @@
             
             setTimeout(() => {
                 startCamera();
-            }, 150);
+            }, 200);
         }
 
         async function startCamera() {
-            stopCamera();
-            isScanning = true;
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
 
-            const video = document.getElementById('webcam-video');
-            const canvas = document.getElementById('scan-canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            const config = {
+                fps: 15, // 負荷とスムーズさのバランス
+                qrbox: { width: 180, height: 180 },
+                aspectRatio: 1.333
+            };
 
             try {
-                // 標準的なHD画質（あるいは適度なサイズ）を要求
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { ideal: "environment" },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                });
-
-                video.srcObject = mediaStream;
-                await video.play();
-
-                videoTrack = mediaStream.getVideoTracks()[0];
-
-                const scanLoop = (timestamp) => {
-                    if (!isScanning) return;
-
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        // 解析用Canvasのサイズを軽量サイズ（幅640px固定、アスペクト比維持）に調整
-                        const targetWidth = 640;
-                        const targetHeight = Math.floor(video.videoHeight * (targetWidth / video.videoWidth));
-
-                        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
-                            canvas.width = targetWidth;
-                            canvas.height = targetHeight;
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText) => {
+                        const now = Date.now();
+                        // 連続スキャン防止フィルタ：同じコードかつ短時間（2.5秒以内）の重複読み取りは無視
+                        if (decodedText === lastScannedCode && (now - lastScanTime < 2500)) {
+                            return;
                         }
-
-                        // スロットリング処理（約100msごとに解析してCPU負荷を大幅に削減）
-                        if (!lastScanTime || timestamp - lastScanTime > 100) {
-                            lastScanTime = timestamp;
-
-                            // ビデオから軽量化キャンバスへ描画
-                            ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
-                            
-                            const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                                inversionAttempts: "dontInvert"
-                            });
-
-                            if (code) {
-                                handleQrCodeResult(code.data);
-                            }
-                        }
+                        
+                        lastScannedCode = decodedText;
+                        lastScanTime = now;
+                        handleQrCodeResult(decodedText);
+                    },
+                    (errorMessage) => {
+                        // スキャン中の毎フレームエラー（QR未検出など）は無視
                     }
-
-                    animationFrameId = requestAnimationFrame(scanLoop);
-                };
-
-                animationFrameId = requestAnimationFrame(scanLoop);
-
+                );
             } catch (err) {
                 console.log("カメラ起動エラー:", err);
                 alert("カメラを起動できませんでした。ブラウザのカメラ権限をご確認ください。");
@@ -298,26 +265,15 @@
             });
 
             if (matched) {
-                // 連続読み取りによる誤作動を防ぐため一時的にスキャンを1.2秒間停止し、その後自動で復帰
-                isScanning = false;
-                setTimeout(() => {
-                    if (document.getElementById('screen-main').classList.contains('active')) {
-                        isScanning = true;
-                        // ループが停止している場合に備えて再開
-                        lastScanTime = 0;
-                        if (!animationFrameId) {
-                            startCamera();
-                        }
-                    }
-                }, 1200);
+                // 成功時は停止せずにスキャンを継続するため、ここでは何もしません（連続読取が可能）
             }
         }
 
         async function toggleLight() {
-            if (!videoTrack) return;
+            if (!html5QrCode) return;
             try {
                 isLightOn = !isLightOn;
-                await videoTrack.applyConstraints({
+                await html5QrCode.applyVideoConstraints({
                     advanced: [{ torch: isLightOn }]
                 });
                 const lightBtn = document.getElementById('btn-light');
@@ -389,23 +345,37 @@
             renderCheckpoints();
         }
 
-        function stopCamera() {
-            isScanning = false;
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
+        async function stopCamera() {
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                } catch (e) {
+                    // 既に停止している場合のエラーを無視
+                }
             }
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            videoTrack = null;
         }
 
-        function pauseSession() { stopCamera(); switchScreen('screen-pause'); }
-        function resumeSession() { switchScreen('screen-main'); setTimeout(startCamera, 150); }
-        function abortSession() { if (confirm("途中終了しますか？")) sendDataToSheet("途中終了"); }
-        function completeSession() { if (confirm("完了して送信しますか？")) sendDataToSheet("正常完了"); }
+        function pauseSession() {
+            stopCamera();
+            switchScreen('screen-pause');
+        }
+
+        function resumeSession() {
+            switchScreen('screen-main');
+            setTimeout(startCamera, 200);
+        }
+
+        function abortSession() {
+            if (confirm("途中終了しますか？")) {
+                sendDataToSheet("途中終了");
+            }
+        }
+
+        function completeSession() {
+            if (confirm("完了して送信しますか？")) {
+                sendDataToSheet("正常完了");
+            }
+        }
 
         function sendDataToSheet(mode) {
             stopCamera();
@@ -431,7 +401,7 @@
                 console.error("送信エラー:", error);
                 alert("送信に失敗しました。");
                 switchScreen('screen-main');
-                setTimeout(startCamera, 150);
+                setTimeout(startCamera, 200);
             });
         }
 
@@ -439,6 +409,7 @@
             checkpoints.forEach(cp => cp.status = 0);
             currentStaff = "";
             isLightOn = false;
+            lastScannedCode = "";
             document.getElementById('display-staff-name').innerText = "未選択";
             switchScreen('screen-staff');
         }
