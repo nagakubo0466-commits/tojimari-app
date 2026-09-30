@@ -68,10 +68,19 @@
             position: relative;
         }
 
-        .section-title {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 8px;
+        /* カテゴリごとのスタイル */
+        .category-group {
+            margin-bottom: 20px;
+        }
+
+        .category-title {
+            font-size: 1rem;
+            color: var(--primary-color);
+            background-color: #eef2f5;
+            padding: 8px 12px;
+            border-left: 4px solid var(--secondary-color);
+            border-radius: 4px;
+            margin-bottom: 10px;
             font-weight: bold;
         }
 
@@ -79,7 +88,6 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-bottom: 24px;
         }
 
         .check-item {
@@ -124,6 +132,7 @@
             justify-content: center;
             background: white;
             transition: all 0.2s;
+            flex-shrink: 0;
         }
 
         .check-item.checked .checkbox-box {
@@ -301,9 +310,8 @@
 
     <!-- メイン：チェックリスト ＆ 中断中画面 -->
     <main id="mainContainer">
-        <div class="section-title">チェック箇所一覧</div>
-        <div class="checklist" id="checklistContainer">
-            <!-- JavaScriptで動的生成 -->
+        <div id="categoriesContainer">
+            <!-- JavaScriptでカテゴリごとに動的生成 -->
         </div>
 
         <!-- 中断中画面 -->
@@ -344,29 +352,56 @@
     </div>
 
     <script>
-        // チェックポイント名一覧（全35箇所）
+        // チェックポイント一覧（カテゴリ分け対応版・全35項目）
         const checkItems = [
-            "1階 エントランス自動ドア", "1階 事務室窓", "1階 会議室窓", "1階 給湯室勝手口", "1階 トイレ小窓",
-            "2階 第1研修室窓", "2階 第2研修室窓", "2階 講師控室窓", "2階 通路非常口", "2階 女子トイレ窓",
-            "3階 大会議室窓", "3階 小会議室窓", "3階 役員室窓", "3階 給湯室窓", "3階 男子トイレ窓",
-            "4階 アーカイブ室窓", "4階 書庫ドア", "4階 サーバールーム窓", "4階 倉庫前窓", "4階 非常階段ドア",
-            "5階 屋上出入り口", "5階 展望ラウンジ窓", "5階 機械室ドア", "5階 倉庫内窓", "5階 廊下窓",
-            "地下1階 駐車場出入り口", "地下1階 用務員室窓", "地下1階 ボイラー室ドア", "地下1階 倉庫ドア", "地下1階 通路窓",
-            "別棟 倉庫A", "別棟 倉庫B", "別棟 休憩室窓", "別棟 更衣室窓", "別棟 勝手口"
+            { id: "POINT_01", category: "執務室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_02", category: "執務室", name: "レジ", status: 0 },
+            { id: "POINT_03", category: "執務室", name: "金庫", status: 0 },
+            { id: "POINT_04", category: "執務室", name: "パソコン", status: 0 },
+            { id: "POINT_05", category: "執務室", name: "キャビネ横長2ヶ所", status: 0 },
+            { id: "POINT_06", category: "執務室", name: "キャビネ書類4ヶ所", status: 0 },
+            { id: "POINT_08", category: "執務室", name: "電灯、空調", status: 0 },
+            { id: "POINT_09", category: "執務室", name: "温室暖房制御盤(冬)", status: 0 },
+            { id: "POINT_10", category: "執務室", name: "扇風機", status: 0 },
+            { id: "POINT_11", category: "執務室", name: "展示室側のカギ", status: 0 },
+            { id: "POINT_12", category: "休憩室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_13", category: "休憩室", name: "ﾎﾟｯﾄ・ﾚﾝｼﾞ電源", status: 0 },
+            { id: "POINT_14", category: "休憩室", name: "電灯・空調", status: 0 },
+            { id: "POINT_15", category: "休憩室", name: "温水器", status: 0 },
+            { id: "POINT_16", category: "休憩室", name: "扇風機", status: 0 },
+            { id: "POINT_17", category: "図書室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_18", category: "図書室", name: "電灯・空調", status: 0 },
+            { id: "POINT_19", category: "図書室", name: "ベジチェック", status: 0 },
+            { id: "POINT_20", category: "展示ホール", name: "扇風機", status: 0 },
+            { id: "POINT_21", category: "展示ホール", name: "電灯・空調", status: 0 },
+            { id: "POINT_22", category: "展示ホール", name: "ドア3ヶ所", status: 0 },
+            { id: "POINT_23", category: "展示ホール", name: "倉庫電灯", status: 0 },
+            { id: "POINT_24", category: "エレベータ", name: "止めていないか", status: 0 },
+            { id: "POINT_25", category: "廊下", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_26", category: "トイレ", name: "男子", status: 0 },
+            { id: "POINT_27", category: "トイレ", name: "女子", status: 0 },
+            { id: "POINT_28", category: "温室", name: "ドア（駐車場側）", status: 0 },
+            { id: "POINT_29", category: "温室", name: "倉庫電灯2ヶ所", status: 0 },
+            { id: "POINT_30", category: "出入口", name: "セコム", status: 0 },
+            { id: "POINT_31", category: "出入口", name: "施錠", status: 0 },
+            { id: "POINT_32", category: "会議室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_33", category: "会議室", name: "電灯・空調", status: 0 },
+            { id: "POINT_34", category: "研修室", name: "窓4ヶ所", status: 0 },
+            { id: "POINT_35_1", category: "研修室", name: "電灯3ヶ所", status: 0 },
+            { id: "POINT_35_2", category: "研修室", name: "空調", status: 0 }
         ];
 
-        // 担当者（報告者）の名前リスト
-        const reporters = ["佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤"];
+        // 指定された担当者（報告者）の名前リスト
+        const reporters = ["西巻", "篠田", "田邊", "伴野", "磯谷", "岡本", "遠藤", "ゲスト"];
 
         // 状態管理
-        let checkedState = new Array(checkItems.length).fill(false);
         let pendingStatus = ""; // "完了" または "途中終了"
 
         // GASのウェブアプリURL（ご自身のGASデプロイURLに書き換えてください）
         const GAS_URL = "YOUR_GAS_WEB_APP_URL_HERE";
 
         // 要素の取得
-        const checklistContainer = document.getElementById('checklistContainer');
+        const categoriesContainer = document.getElementById('categoriesContainer');
         const headerCounter = document.getElementById('headerCounter');
         const pauseOverlay = document.getElementById('pauseOverlay');
         const pauseBtn = document.getElementById('pauseBtn');
@@ -387,31 +422,58 @@
             updateCounter();
         }
 
-        // チェックリストの描画
+        // チェックリストをカテゴリ別にグループ化して描画
         function renderChecklist() {
-            checklistContainer.innerHTML = '';
+            categoriesContainer.innerHTML = '';
+
+            const grouped = {};
             checkItems.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = `check-item ${checkedState[index] ? 'checked' : ''}`;
-                div.innerHTML = `
-                    <span class="item-text">${item}</span>
-                    <div class="checkbox-box"></div>
-                `;
-                div.addEventListener('click', () => {
-                    checkedState[index] = !checkedState[index];
-                    div.classList.toggle('checked', checkedState[index]);
-                    updateCounter();
-                });
-                checklistContainer.appendChild(div);
+                if (!grouped[item.category]) {
+                    grouped[item.category] = [];
+                }
+                grouped[item.category].push({ ...item, originalIndex: index });
             });
+
+            for (const [categoryName, items] of Object.entries(grouped)) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'category-group';
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'category-title';
+                titleDiv.textContent = categoryName;
+                groupDiv.appendChild(titleDiv);
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'checklist';
+
+                items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `check-item ${item.status === 1 ? 'checked' : ''}`;
+                    itemDiv.innerHTML = `
+                        <span class="item-text">${item.name}</span>
+                        <div class="checkbox-box"></div>
+                    `;
+
+                    itemDiv.addEventListener('click', () => {
+                        item.status = item.status === 1 ? 0 : 1;
+                        checkItems[item.originalIndex].status = item.status;
+                        itemDiv.classList.toggle('checked', item.status === 1);
+                        updateCounter();
+                    });
+
+                    listDiv.appendChild(itemDiv);
+                });
+
+                groupDiv.appendChild(listDiv);
+                categoriesContainer.appendChild(groupDiv);
+            }
         }
 
         // カウンターの更新と「完了して送信」ボタンの活性・非活性切替
         function updateCounter() {
-            const checkedCount = checkedState.filter(Boolean).length;
+            const checkedCount = checkItems.filter(item => item.status === 1).length;
             headerCounter.textContent = `${checkedCount}/${checkItems.length}`;
 
-            // 全部にチェックが入ったときのみ「完了して送信」を有効にする
             if (checkedCount === checkItems.length) {
                 completeBtn.disabled = false;
             } else {
@@ -436,14 +498,14 @@
 
         // GASへの送信処理
         function submitLogToGAS(status, reporterName) {
-            const checkedCount = checkedState.filter(Boolean).length;
+            const checkedCount = checkItems.filter(item => item.status === 1).length;
             const payload = {
                 timestamp: new Date().toLocaleString('ja-JP'),
                 reporter: reporterName,
                 status: status,
                 checkedCount: checkedCount,
                 totalCount: checkItems.length,
-                details: checkItems.map((item, i) => ({ item: item, checked: checkedState[i] }))
+                details: checkItems.map(item => ({ id: item.id, category: item.category, name: item.name, checked: item.status === 1 }))
             };
 
             if (GAS_URL !== "YOUR_GAS_WEB_APP_URL_HERE") {
@@ -487,8 +549,7 @@
 
         finalCloseBtn.addEventListener('click', () => {
             completeModal.classList.remove('active');
-            // アプリを初期状態へリセット
-            checkedState.fill(false);
+            checkItems.forEach(item => item.status = 0);
             renderChecklist();
             updateCounter();
             pauseOverlay.classList.remove('active');
