@@ -4,118 +4,153 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>戸締り確認アプリ</title>
-    <!-- 高速・軽量なQRコード解析ライブラリ (jsQR) -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- html5-qrcode ライブラリの読み込み -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --primary-border: #bfdbfe;
+            --success: #059669;
+            --success-bg: #f0fdf4;
+            --warning: #d97706;
+            --warning-bg: #fffbeb;
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --gray-bg: #f8fafc;
+            --gray-border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        .container { flex: 1; max-width: 600px; width: 100%; margin: 0 auto; padding: 8px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        
-        .card { background: white; border-radius: 8px; padding: 10px; margin-bottom: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--gray-bg); color: var(--text-main); line-height: 1.5; }
+
+        header { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.05em; }
+        #header-staff { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+        .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1); border: 1px solid var(--gray-border); }
         
         /* 画面切り替え用クラス */
-        .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-        .screen.active { display: flex; }
+        .screen { display: none; }
+        .screen.active { display: block; }
 
         /* 担当者選択画面 */
-        .staff-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; max-height: 350px; overflow-y: auto; }
-        .staff-btn { padding: 15px; background: #e8f0fe; border: 1px solid #1a73e8; border-radius: 6px; font-size: 16px; font-weight: bold; color: #1a73e8; text-align: center; cursor: pointer; }
-        .staff-btn:active { background: #d2e3fc; }
+        .staff-selection-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text-main); text-align: center; }
+        .staff-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-height: 360px; overflow-y: auto; padding: 2px; }
+        .staff-btn { padding: 16px; background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 8px; font-size: 16px; font-weight: 700; color: var(--primary); text-align: center; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .staff-btn:hover { background: #dbeafe; transform: translateY(-1px); }
+        .staff-btn:active { background: #bfdbfe; transform: translateY(0); }
 
-        /* メイン画面：上部エリア */
-        .top-section { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-        
-        .camera-status-row { display: flex; gap: 6px; align-items: center; }
-        .staff-display-box { flex: 1; background: white; border-radius: 6px; border: 1px solid #ddd; padding: 6px 10px; font-size: 12px; color: #666; display: flex; justify-content: space-between; align-items: center; }
-        .staff-name-highlight { font-size: 13px; font-weight: bold; color: #1a73e8; }
-        .progress-box { background: white; border-radius: 6px; border: 1px solid #ddd; padding: 6px 12px; text-align: center; font-size: 14px; font-weight: bold; color: #1a73e8; }
+        /* メイン画面：カメラ＆進捗 */
+        .top-section { display: flex; gap: 12px; margin-bottom: 12px; flex-direction: column; }
+        @media(min-width: 480px) {
+            .top-section { flex-direction: row; }
+        }
+        #reader-container { flex: 1; background: #000; border-radius: 8px; overflow: hidden; position: relative; min-height: 220px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        #reader { width: 100%; height: 100%; }
 
-        /* カメラ描画エリア */
-        #camera-container { width: 100%; height: 210px; background: #000; border-radius: 6px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-        #webcam-video { display: none; } /* 読み取り元の映像要素（非表示） */
-        #preview-canvas { width: 100%; height: 100%; object-fit: cover; } /* ライブビュー画面 */
+        .progress-box { background: white; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--gray-border); padding: 12px; width: 100%; min-width: 120px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        @media(min-width: 480px) {
+            .progress-box { width: 130px; }
+        }
+        .progress-num { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+        .progress-label { font-size: 12px; color: var(--text-sub); font-weight: 600; margin-top: 4px; }
 
-        /* 中央エリア：ポイント一覧 */
-        .checkpoint-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 6px; padding: 8px; }
-        .checkpoint-container { flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
-        .category-header { background: #e8f0fe; color: #1a73e8; font-weight: bold; font-size: 13px; padding: 6px 10px; border-bottom: 1px solid #d2e3fc; border-top: 1px solid #d2e3fc; position: sticky; top: 0; z-index: 2; }
+        .action-buttons { display: flex; gap: 8px; margin-bottom: 16px; }
+        .btn { flex: 1; padding: 12px 8px; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn:active { transform: scale(0.98); }
+        .btn-pause { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; }
+        .btn-abort { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+        .btn-finish { background: #e6f4ea; color: var(--success); border: 1px solid #a7f3d0; }
+        .btn-finish:not(:disabled) { background: var(--success); color: white; }
+
+        /* チェックリスト ＆ カテゴリ見出し */
+        .section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
+        .checkpoint-container { max-height: 380px; overflow-y: auto; border: 1px solid var(--gray-border); border-radius: 8px; background: white; }
+        .category-header { background: #f1f5f9; color: var(--text-main); font-weight: 700; font-size: 13px; padding: 8px 14px; border-bottom: 1px solid var(--gray-border); border-top: 1px solid var(--gray-border); letter-spacing: 0.03em; }
         .category-header:first-child { border-top: none; }
         
-        .cp-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; background: #fff; }
-        .cp-item.done-qr { background: #f0fdf4; }
-        .cp-item.done-manual { background: #fefce8; }
-        .cp-info { flex: 1; padding-left: 6px; }
-        .cp-name { font-size: 14px; font-weight: 500; }
-        .cp-status { font-size: 11px; color: #666; margin-top: 1px; }
-        .manual-toggle-btn { padding: 6px 10px; font-size: 12px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-        .cp-item.done-qr .manual-toggle-btn, .cp-item.done-manual .manual-toggle-btn { border-color: #1a73e8; color: #1a73e8; }
+        .cp-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; background: #fff; transition: background 0.2s; }
+        .cp-item:last-child { border-bottom: none; }
+        .cp-item.done-qr { background: var(--success-bg); }
+        .cp-item.done-manual { background: var(--warning-bg); }
+        .cp-info { flex: 1; }
+        .cp-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
+        .cp-status { font-size: 11px; color: var(--text-sub); margin-top: 2px; font-weight: 500; }
+        .cp-item.done-qr .cp-status { color: var(--success); font-weight: 700; }
+        .cp-item.done-manual .cp-status { color: var(--warning); font-weight: 700; }
 
-        /* 下部エリア：ボタン類 */
-        .action-buttons { display: flex; gap: 6px; flex-shrink: 0; margin-bottom: 4px; }
-        .btn { padding: 10px 6px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; text-align: center; }
-        .btn-pause { background: #fef3c7; color: #d97706; flex: 1; }
-        .btn-abort { background: #fee2e2; color: #dc2626; flex: 1; }
-        .btn-finish { background: #d1fae5; color: #059669; flex: 1.5; }
-        .btn-light { background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; width: 44px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-        .btn-light.active { background: #fef08a; border-color: #eab308; color: #854d0e; }
+        .manual-toggle-btn { padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid var(--gray-border); background: white; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
+        .cp-item.done-qr .manual-toggle-btn, .cp-item.done-manual .manual-toggle-btn { border-color: var(--primary-border); color: var(--primary); background: white; }
+        .manual-toggle-btn:hover { background: #f8fafc; }
 
         /* 中断画面 */
-        .pause-screen { text-align: center; padding: 40px 20px; justify-content: center; align-items: center; }
-        .pause-screen h2 { margin-bottom: 20px; color: #d97706; }
-        .btn-resume { background: #1a73e8; color: white; padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; width: 100%; max-width: 300px; }
+        .pause-screen { text-align: center; padding: 40px 20px; }
+        .pause-screen h2 { margin-bottom: 24px; color: var(--warning); font-size: 20px; }
+        .btn-resume { background: var(--primary); color: white; padding: 14px 24px; font-size: 16px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.3); transition: background 0.2s; }
+        .btn-resume:hover { background: var(--primary-dark); }
 
         /* ローディング画面 */
-        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; }
+        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(2px); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-direction: column; gap: 12px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loading-overlay">データを送信中...</div>
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div>データを送信中...</div>
+    </div>
+
+    <header>
+        <h1>戸締り確認アプリ</h1>
+        <span id="header-staff">未選択</span>
+    </header>
 
     <div class="container">
 
         <!-- SCREEN 1: 担当者選択画面 -->
         <div id="screen-staff" class="screen active">
-            <div class="card" style="margin-top: 20px;">
-                <h3 style="margin-bottom: 10px;">担当者を選択してください</h3>
+            <div class="card">
+                <div class="staff-selection-title">担当者を選択してください</div>
                 <div id="staff-list-container" class="staff-list"></div>
             </div>
         </div>
 
-        <!-- SCREEN 2: メイン画面 -->
+        <!-- SCREEN 2: メイン（カメラ自動起動 ＆ チェックリスト） -->
         <div id="screen-main" class="screen">
             <div class="top-section">
-                <div id="camera-container">
-                    <video id="webcam-video" playsinline autoplay></video>
-                    <canvas id="preview-canvas"></canvas>
+                <div id="reader-container">
+                    <div id="reader"></div>
                 </div>
-                <div class="camera-status-row">
-                    <div class="staff-display-box">
-                        <span>担当: <span id="display-staff-name" class="staff-name-highlight">未選択</span></span>
-                    </div>
-                    <div class="progress-box" id="progress-text">0/35</div>
+                <div class="progress-box">
+                    <div class="progress-num" id="progress-text">0/0</div>
+                    <div class="progress-label">完了ポイント</div>
                 </div>
             </div>
 
-            <!-- 中央：ポイント一覧 -->
-            <div class="card checkpoint-card">
-                <div style="font-size: 14px; font-weight: bold; margin-bottom: 6px;">ポイント一覧</div>
-                <div class="checkpoint-container" id="checkpoint-list"></div>
-            </div>
-
-            <!-- 下部：各種ボタン・ライトスイッチ -->
             <div class="action-buttons">
-                <button class="btn btn-pause" onclick="pauseSession()">中断</button>
-                <button class="btn btn-abort" onclick="abortSession()">終了</button>
-                <button class="btn btn-finish" id="btn-complete" onclick="completeSession()" disabled>送信</button>
-                <button class="btn btn-light" id="btn-light" onclick="toggleLight()" title="ライト切り替え">💡</button>
+                <button class="btn btn-pause" onclick="pauseSession()">中断する</button>
+                <button class="btn btn-abort" onclick="abortSession()">途中終了</button>
+                <button class="btn btn-finish" id="btn-complete" onclick="completeSession()" disabled>完了して送信</button>
+            </div>
+
+            <div class="card" style="padding: 12px 16px;">
+                <div class="section-title">
+                    <span>ポイント一覧</span>
+                </div>
+                <div class="checkpoint-container" id="checkpoint-list"></div>
             </div>
         </div>
 
         <!-- SCREEN 3: 中断画面 -->
-        <div id="screen-pause" class="screen pause-screen">
-            <div class="card" style="width: 100%;">
+        <div id="screen-pause" class="screen">
+            <div class="card pause-screen">
                 <h2>作業を中断しています</h2>
                 <button class="btn-resume" onclick="resumeSession()">作業を再開する</button>
             </div>
@@ -124,6 +159,7 @@
     </div>
 
     <script>
+        // ★ここにGASのウェブアプリURLを貼り付けてください
         const GAS_URL = "【ここにGASのウェブアプリURLを貼り付け】";
 
         const staffList = ["西巻", "篠田", "田邊", "伴野", "磯谷", "岡本", "遠藤", "ゲスト"];
@@ -167,11 +203,7 @@
         ];
 
         let currentStaff = "";
-        let mediaStream = null;
-        let isScanning = false;
-        let isLightOn = false;
-        let videoTrack = null;
-        let animationFrameId = null;
+        let html5QrCode = null;
 
         function playBeepSound() {
             try {
@@ -208,124 +240,41 @@
 
         function selectStaff(staff) {
             currentStaff = staff;
-            document.getElementById('display-staff-name').innerText = staff;
+            document.getElementById('header-staff').innerText = `担当: ${staff}`;
             switchScreen('screen-main');
             renderCheckpoints();
-            
-            setTimeout(() => {
-                startCamera();
-            }, 150);
+            startCamera(); // 担当者選択後に自動起動
         }
 
-        async function startCamera() {
-            stopCamera();
-            isScanning = true;
-
-            const video = document.getElementById('webcam-video');
-            const canvas = document.getElementById('preview-canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-            try {
-                // 負荷を抑えつつ十分な解像度を確保する設定 (640x480)
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { ideal: "environment" },
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                });
-
-                video.srcObject = mediaStream;
-                await video.play();
-
-                videoTrack = mediaStream.getVideoTracks()[0];
-
-                let lastTick = 0;
-                const fpsLimit = 10; // 秒間10回スキャン（軽量かつ十分な速度）
-                const interval = 1000 / fpsLimit;
-
-                const scanLoop = (timestamp) => {
-                    if (!isScanning) return;
-
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-                            canvas.width = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                        }
-
-                        // ライブビューに映像を描画
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        // 一定間隔ごとにQRコード解析を実行
-                        if (!lastTick || timestamp - lastTick >= interval) {
-                            lastTick = timestamp;
-
-                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                                inversionAttempts: "dontInvert"
-                            });
-
-                            if (code) {
-                                handleQrCodeResult(code.data);
-                            }
-                        }
-                    }
-
-                    animationFrameId = requestAnimationFrame(scanLoop);
-                };
-
-                animationFrameId = requestAnimationFrame(scanLoop);
-
-            } catch (err) {
-                console.log("カメラ起動エラー:", err);
-                alert("カメラを起動できませんでした。カメラの権限やブラウザの設定をご確認ください。");
+        function startCamera() {
+            if (html5QrCode) {
+                try {
+                    html5QrCode.stop().catch(() => {});
+                } catch(e) {}
             }
-        }
 
-        function handleQrCodeResult(text) {
-            let matched = false;
-            checkpoints.forEach(cp => {
-                if (cp.id === text && cp.status === 0) {
-                    cp.status = 1;
-                    matched = true;
-                    renderCheckpoints();
-                    playBeepSound();
-                    if (navigator.vibrate) navigator.vibrate(100);
-                }
+            html5QrCode = new Html5Qrcode("reader");
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 200, height: 200 }
+                },
+                (text) => {
+                    checkpoints.forEach(cp => {
+                        if (cp.id === text && cp.status === 0) {
+                            cp.status = 1;
+                            renderCheckpoints();
+                            playBeepSound();
+                            if (navigator.vibrate) navigator.vibrate(100);
+                        }
+                    });
+                },
+                (errorMessage) => {}
+            ).catch(err => {
+                console.log("カメラ自動起動エラー:", err);
             });
-
-            if (matched) {
-                // 1つ読み取ったら、連続多重読み込みを防ぐために0.8秒間スキャンを一時停止し、自動で再開する
-                isScanning = false;
-                setTimeout(() => {
-                    if (document.getElementById('screen-main').classList.contains('active')) {
-                        isScanning = true;
-                        // ループが停止していた場合は再開
-                        if (!animationFrameId) {
-                            startCamera();
-                        }
-                    }
-                }, 800);
-            }
-        }
-
-        async function toggleLight() {
-            if (!videoTrack) return;
-            try {
-                isLightOn = !isLightOn;
-                await videoTrack.applyConstraints({
-                    advanced: [{ torch: isLightOn }]
-                });
-                const lightBtn = document.getElementById('btn-light');
-                if (isLightOn) {
-                    lightBtn.classList.add('active');
-                } else {
-                    lightBtn.classList.remove('active');
-                }
-            } catch (err) {
-                isLightOn = !isLightOn;
-                alert("この端末やブラウザではライト機能を利用できません。");
-            }
         }
 
         function renderCheckpoints() {
@@ -351,8 +300,8 @@
                 if (cp.status === 2) item.classList.add('done-manual');
 
                 let statusText = "未チェック";
-                if (cp.status === 1) statusText = "● QR読取完了";
-                if (cp.status === 2) statusText = "● 手動チェック完了";
+                if (cp.status === 1) statusText = "QR読取完了";
+                if (cp.status === 2) statusText = "手動チェック完了";
 
                 item.innerHTML = `
                     <div class="cp-info">
@@ -360,7 +309,7 @@
                         <div class="cp-status">${statusText}</div>
                     </div>
                     <button class="manual-toggle-btn" onclick="toggleManual(${index})">
-                        ${cp.status > 0 ? '解除' : '手動OK'}
+                        ${cp.status > 0 ? '解除する' : '手動OK'}
                     </button>
                 `;
                 listEl.appendChild(item);
@@ -371,12 +320,8 @@
             const completeBtn = document.getElementById('btn-complete');
             if (completedCount === checkpoints.length) {
                 completeBtn.removeAttribute('disabled');
-                completeBtn.style.background = '#059669';
-                completeBtn.style.color = 'white';
             } else {
                 completeBtn.setAttribute('disabled', 'true');
-                completeBtn.style.background = '#d1fae5';
-                completeBtn.style.color = '#059669';
             }
         }
 
@@ -386,20 +331,17 @@
         }
 
         function stopCamera() {
-            isScanning = false;
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
+            if (html5QrCode) {
+                try {
+                    html5QrCode.stop().then(() => { html5QrCode = null; }).catch(() => { html5QrCode = null; });
+                } catch (e) {
+                    html5QrCode = null;
+                }
             }
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            videoTrack = null;
         }
 
         function pauseSession() { stopCamera(); switchScreen('screen-pause'); }
-        function resumeSession() { switchScreen('screen-main'); setTimeout(startCamera, 150); }
+        function resumeSession() { switchScreen('screen-main'); startCamera(); }
         function abortSession() { if (confirm("途中終了しますか？")) sendDataToSheet("途中終了"); }
         function completeSession() { if (confirm("完了して送信しますか？")) sendDataToSheet("正常完了"); }
 
@@ -427,15 +369,14 @@
                 console.error("送信エラー:", error);
                 alert("送信に失敗しました。");
                 switchScreen('screen-main');
-                setTimeout(startCamera, 150);
+                startCamera();
             });
         }
 
         function resetApp() {
             checkpoints.forEach(cp => cp.status = 0);
             currentStaff = "";
-            isLightOn = false;
-            document.getElementById('display-staff-name').innerText = "未選択";
+            document.getElementById('header-staff').innerText = "未選択";
             switchScreen('screen-staff');
         }
     </script>
