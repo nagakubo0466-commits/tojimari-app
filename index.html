@@ -179,6 +179,40 @@
             margin-bottom: 24px;
         }
 
+        /* 送信中ローディングオーバーレイ */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            gap: 12px;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         /* フッター・操作パネル */
         footer {
             background: white;
@@ -321,6 +355,12 @@
         </div>
     </main>
 
+    <!-- 送信中ローディングオーバーレイ -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div>データを送信中...</div>
+    </div>
+
     <!-- フッター -->
     <footer>
         <div class="footer-buttons">
@@ -397,13 +437,16 @@
         // 状態管理
         let pendingStatus = ""; // "完了" または "途中終了"
 
-        // GASのウェブアプリURL（ご自身のGASデプロイURLに書き換えてください）
-        const GAS_URL = "YOUR_GAS_WEB_APP_URL_HERE";
+        // ==========================================
+        // ▼▼ ご自身のGASウェブアプリURLに変更してください ▼▼
+        // ==========================================
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbysyMjWHr3xsmDFvPOkgV1dJD6dJqSbVuL6gU_5GiDWp4unCbdUiYckd910gORozWIv/exec";
 
         // 要素の取得
         const categoriesContainer = document.getElementById('categoriesContainer');
         const headerCounter = document.getElementById('headerCounter');
         const pauseOverlay = document.getElementById('pauseOverlay');
+        const loadingOverlay = document.getElementById('loadingOverlay');
         const pauseBtn = document.getElementById('pauseBtn');
         const resumeBtn = document.getElementById('resumeBtn');
         const incompleteBtn = document.getElementById('incompleteBtn');
@@ -508,18 +551,28 @@
                 details: checkItems.map(item => ({ id: item.id, category: item.category, name: item.name, checked: item.status === 1 }))
             };
 
-            if (GAS_URL !== "YOUR_GAS_WEB_APP_URL_HERE") {
+            if (GAS_URL && GAS_URL !== "YOUR_GAS_WEB_APP_URL_HERE") {
+                loadingOverlay.classList.add('active'); // 送信中表示
+
                 fetch(GAS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                }).catch(err => console.error("GAS送信エラー:", err));
+                })
+                .then(() => {
+                    loadingOverlay.classList.remove('active');
+                    completeModal.classList.add('active');
+                })
+                .catch(err => {
+                    loadingOverlay.classList.remove('active');
+                    console.error("GAS送信エラー:", err);
+                    alert("送信に失敗しました。ネットワーク接続を確認してください。");
+                });
             } else {
                 console.log("送信データ模擬:", payload);
+                completeModal.classList.add('active');
             }
-
-            completeModal.classList.add('active');
         }
 
         // イベントリスナー
