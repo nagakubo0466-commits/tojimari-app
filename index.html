@@ -391,7 +391,7 @@
         </div>
     </div>
 
-    <script>
+<script>
         // チェックポイント一覧（カテゴリ分け対応版・全35項目）
         const checkItems = [
             { id: "POINT_01", category: "執務室", name: "窓2ヶ所", status: 0 },
@@ -431,18 +431,11 @@
             { id: "POINT_35_2", category: "研修室", name: "空調", status: 0 }
         ];
 
-        // 指定された担当者（報告者）の名前リスト
         const reporters = ["西巻", "篠田", "田邊", "伴野", "磯谷", "岡本", "遠藤", "ゲスト"];
+        let pendingStatus = "";
 
-        // 状態管理
-        let pendingStatus = ""; // "完了" または "途中終了"
-
-        // ==========================================
-        // ▼▼ ご自身のGASウェブアプリURLに変更してください ▼▼
-        // ==========================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbysyMjWHr3xsmDFvPOkgV1dJD6dJqSbVuL6gU_5GiDWp4unCbdUiYckd910gORozWIv/exec";
 
-        // 要素の取得
         const categoriesContainer = document.getElementById('categoriesContainer');
         const headerCounter = document.getElementById('headerCounter');
         const pauseOverlay = document.getElementById('pauseOverlay');
@@ -458,22 +451,17 @@
         const completeModal = document.getElementById('completeModal');
         const finalCloseBtn = document.getElementById('finalCloseBtn');
 
-        // アプリ初期化
         function initApp() {
             renderChecklist();
             setupReporters();
             updateCounter();
         }
 
-        // チェックリストをカテゴリ別にグループ化して描画
         function renderChecklist() {
             categoriesContainer.innerHTML = '';
-
             const grouped = {};
             checkItems.forEach((item, index) => {
-                if (!grouped[item.category]) {
-                    grouped[item.category] = [];
-                }
+                if (!grouped[item.category]) grouped[item.category] = [];
                 grouped[item.category].push({ ...item, originalIndex: index });
             });
 
@@ -512,19 +500,12 @@
             }
         }
 
-        // カウンターの更新と「完了して送信」ボタンの活性・非活性切替
         function updateCounter() {
             const checkedCount = checkItems.filter(item => item.status === 1).length;
             headerCounter.textContent = `${checkedCount}/${checkItems.length}`;
-
-            if (checkedCount === checkItems.length) {
-                completeBtn.disabled = false;
-            } else {
-                completeBtn.disabled = true;
-            }
+            completeBtn.disabled = (checkedCount !== checkItems.length);
         }
 
-        // 担当者ボタンの生成
         function setupReporters() {
             reporterList.innerHTML = '';
             reporters.forEach(name => {
@@ -539,7 +520,7 @@
             });
         }
 
-        // GASへの送信処理
+        // 送信処理（no-cors対応版）
         function submitLogToGAS(status, reporterName) {
             const checkedCount = checkItems.filter(item => item.status === 1).length;
             const payload = {
@@ -548,42 +529,41 @@
                 status: status,
                 checkedCount: checkedCount,
                 totalCount: checkItems.length,
-                details: checkItems.map(item => ({ id: item.id, category: item.category, name: item.name, checked: item.status === 1 }))
+                details: checkItems.map(item => ({ 
+                    id: item.id, 
+                    category: item.category, 
+                    name: item.name, 
+                    checked: item.status === 1 
+                }))
             };
 
             if (GAS_URL && GAS_URL !== "YOUR_GAS_WEB_APP_URL_HERE") {
-                loadingOverlay.classList.add('active'); // 送信中表示
+                loadingOverlay.classList.add('active');
 
+                // fetchで送信 (no-corsではレスポンス中身が読み取れないため、送信完了＝成功とみなす)
                 fetch(GAS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                })
-                .then(() => {
+                }).then(() => {
+                    // 送信リクエストが完了したらローディングを閉じて完了モーダルを表示
                     loadingOverlay.classList.remove('active');
                     completeModal.classList.add('active');
-                })
-                .catch(err => {
+                }).catch(err => {
                     loadingOverlay.classList.remove('active');
-                    console.error("GAS送信エラー:", err);
-                    alert("送信に失敗しました。ネットワーク接続を確認してください。");
+                    console.error("通信エラー:", err);
+                    alert("ネットワークエラーが発生しました。接続を確認してください。");
                 });
             } else {
-                console.log("送信データ模擬:", payload);
+                console.log("送信データ:", payload);
                 completeModal.classList.add('active');
             }
         }
 
-        // イベントリスナー
-        pauseBtn.addEventListener('click', () => {
-            pauseOverlay.classList.add('active');
-        });
-
-        resumeBtn.addEventListener('click', () => {
-            pauseOverlay.classList.remove('active');
-        });
-
+        pauseBtn.addEventListener('click', () => pauseOverlay.classList.add('active'));
+        resumeBtn.addEventListener('click', () => pauseOverlay.classList.remove('active'));
+        
         incompleteBtn.addEventListener('click', () => {
             pendingStatus = "途中終了";
             modalTitle.textContent = "【途中終了】報告者を選択してください";
@@ -596,9 +576,7 @@
             reporterModal.classList.add('active');
         });
 
-        closeModalBtn.addEventListener('click', () => {
-            reporterModal.classList.remove('active');
-        });
+        closeModalBtn.addEventListener('click', () => reporterModal.classList.remove('active'));
 
         finalCloseBtn.addEventListener('click', () => {
             completeModal.classList.remove('active');
@@ -608,7 +586,6 @@
             pauseOverlay.classList.remove('active');
         });
 
-        // 起動時実行
         initApp();
     </script>
 </body>
