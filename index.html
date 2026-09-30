@@ -10,61 +10,67 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        .container { flex: 1; display: flex; flex-direction: column; padding: 6px; max-width: 600px; margin: 0 auto; width: 100%; overflow: hidden; }
+        .container { flex: 1; max-width: 600px; width: 100%; margin: 0 auto; padding: 8px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        
+        .card { background: white; border-radius: 8px; padding: 10px; margin-bottom: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
         /* 画面切り替え用クラス */
         .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
         .screen.active { display: flex; }
 
         /* 担当者選択画面 */
-        .staff-card { background: white; border-radius: 8px; padding: 16px; margin: auto; width: 100%; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .staff-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; max-height: 60vh; overflow-y: auto; }
+        .staff-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; max-height: 350px; overflow-y: auto; }
         .staff-btn { padding: 15px; background: #e8f0fe; border: 1px solid #1a73e8; border-radius: 6px; font-size: 16px; font-weight: bold; color: #1a73e8; text-align: center; cursor: pointer; }
         .staff-btn:active { background: #d2e3fc; }
 
-        /* メイン画面：上部1/4 (カメラ＆カウンター) */
-        .top-section { height: 24vh; min-height: 120px; max-height: 180px; display: flex; gap: 8px; margin-bottom: 6px; flex-shrink: 0; }
-        #reader-container { flex: 1; background: #000; border-radius: 6px; overflow: hidden; position: relative; height: 100%; }
-        #reader { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
-
-        .progress-box { background: white; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #ddd; padding: 4px; width: 110px; height: 100%; flex-shrink: 0; }
-        .staff-name-display { font-size: 11px; color: #555; font-weight: bold; margin-bottom: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
-        .progress-num { font-size: 22px; font-weight: bold; color: #1a73e8; line-height: 1.1; }
-
-        /* メイン画面：中央2/4 (ポイント一覧) */
-        .middle-section { flex: 1; background: white; border-radius: 6px; border: 1px solid #ddd; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 6px; }
-        .middle-title { font-size: 13px; font-weight: bold; padding: 6px 10px; background: #f8f9fa; border-bottom: 1px solid #eee; flex-shrink: 0; }
-        .checkpoint-container { flex: 1; overflow-y: auto; }
+        /* メイン画面：上部1/4エリア（カメラ ＆ 担当者・カウント） */
+        .top-section { display: flex; gap: 8px; height: 140px; min-height: 140px; margin-bottom: 6px; flex-shrink: 0; }
         
-        .category-header { background: #e8f0fe; color: #1a73e8; font-weight: bold; font-size: 12px; padding: 5px 10px; border-bottom: 1px solid #d2e3fc; border-top: 1px solid #d2e3fc; }
+        #reader-container { flex: 1; background: #000; border-radius: 6px; overflow: hidden; position: relative; height: 100%; }
+        #reader { width: 100%; height: 100%; position: relative; }
+        /* html5-qrcodeが内部生成する要素のレイアウト崩れを防ぐ */
+        #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+        #reader__dashboard, #reader__header_section { display: none !important; }
+
+        .right-pane { width: 120px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+        
+        .staff-display-box { background: white; border-radius: 6px; border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .staff-name-highlight { font-size: 13px; font-weight: bold; color: #1a73e8; display: block; margin-top: 2px; }
+
+        .progress-box { background: white; border-radius: 6px; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #ddd; padding: 4px; }
+        .progress-num { font-size: 24px; font-weight: bold; color: #1a73e8; line-height: 1.1; }
+
+        /* 中央2/4エリア：ポイント一覧 */
+        .checkpoint-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 6px; padding: 8px; }
+        .checkpoint-container { flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+        .category-header { background: #e8f0fe; color: #1a73e8; font-weight: bold; font-size: 13px; padding: 6px 10px; border-bottom: 1px solid #d2e3fc; border-top: 1px solid #d2e3fc; position: sticky; top: 0; z-index: 2; }
         .category-header:first-child { border-top: none; }
         
         .cp-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; background: #fff; }
         .cp-item.done-qr { background: #f0fdf4; }
         .cp-item.done-manual { background: #fefce8; }
-        .cp-info { flex: 1; padding-right: 8px; }
+        .cp-info { flex: 1; padding-left: 6px; }
         .cp-name { font-size: 14px; font-weight: 500; }
         .cp-status { font-size: 11px; color: #666; margin-top: 1px; }
-        .manual-toggle-btn { padding: 4px 8px; font-size: 11px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; white-space: nowrap; }
+        .manual-toggle-btn { padding: 6px 10px; font-size: 12px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
         .cp-item.done-qr .manual-toggle-btn, .cp-item.done-manual .manual-toggle-btn { border-color: #1a73e8; color: #1a73e8; }
 
-        /* メイン画面：下部1/4以下 (操作ボタン群) */
-        .bottom-section { height: 12vh; min-height: 50px; display: flex; gap: 6px; flex-shrink: 0; }
-        .btn { border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; padding: 4px; }
+        /* 下部1/4以下エリア：ボタン類 */
+        .action-buttons { display: flex; gap: 6px; flex-shrink: 0; margin-bottom: 4px; }
+        .btn { padding: 10px 6px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; text-align: center; }
         .btn-pause { background: #fef3c7; color: #d97706; flex: 1; }
         .btn-abort { background: #fee2e2; color: #dc2626; flex: 1; }
-        .btn-finish { background: #d1fae5; color: #059669; flex: 1.2; }
-        .btn-torch { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; width: 48px; font-size: 18px; flex-shrink: 0; }
-        .btn-torch.active { background: #fbbf24; color: #fff; border-color: #f59e0b; }
+        .btn-finish { background: #d1fae5; color: #059669; flex: 1.5; }
+        .btn-light { background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; width: 44px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .btn-light.active { background: #fef08a; border-color: #eab308; color: #854d0e; }
 
         /* 中断画面 */
-        .pause-screen { text-align: center; padding: 40px 20px; background: white; border-radius: 8px; margin: auto; width: 100%; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .pause-screen h2 { margin-bottom: 20px; color: #d97706; font-size: 18px; }
-        .btn-resume { background: #1a73e8; color: white; padding: 12px 24px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; width: 100%; font-weight: bold; }
+        .pause-screen { text-align: center; padding: 40px 20px; justify-content: center; align-items: center; }
+        .pause-screen h2 { margin-bottom: 20px; color: #d97706; }
+        .btn-resume { background: #1a73e8; color: white; padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; width: 100%; max-width: 300px; }
 
         /* ローディング画面 */
-        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; }
+        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -75,43 +81,48 @@
 
         <!-- SCREEN 1: 担当者選択画面 -->
         <div id="screen-staff" class="screen active">
-            <div class="staff-card">
-                <h3 style="font-size: 16px; color: #1a73e8;">担当者を選択してください</h3>
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 10px;">担当者を選択してください</h3>
                 <div id="staff-list-container" class="staff-list"></div>
             </div>
         </div>
 
-        <!-- SCREEN 2: メイン（カメラ上部1/4、一覧中央2/4、ボタン下部） -->
+        <!-- SCREEN 2: メイン画面 -->
         <div id="screen-main" class="screen">
-            <!-- 上部 1/4 -->
+            <!-- 上部：左にカメラ、右に担当者名＆カウント -->
             <div class="top-section">
                 <div id="reader-container">
                     <div id="reader"></div>
                 </div>
-                <div class="progress-box">
-                    <div class="staff-name-display" id="display-staff-name">未選択</div>
-                    <div class="progress-num" id="progress-text">0/35</div>
+                <div class="right-pane">
+                    <div class="staff-display-box">
+                        担当
+                        <span id="display-staff-name" class="staff-name-highlight">未選択</span>
+                    </div>
+                    <div class="progress-box">
+                        <div class="progress-num" id="progress-text">0/35</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 中央 2/4 -->
-            <div class="middle-section">
-                <div class="middle-title">ポイント一覧</div>
+            <!-- 中央：ポイント一覧 -->
+            <div class="card checkpoint-card">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 6px;">ポイント一覧</div>
                 <div class="checkpoint-container" id="checkpoint-list"></div>
             </div>
 
-            <!-- 下部 1/4以下 -->
-            <div class="bottom-section">
+            <!-- 下部：各種ボタン・ライトスイッチ -->
+            <div class="action-buttons">
                 <button class="btn btn-pause" onclick="pauseSession()">中断</button>
-                <button class="btn btn-abort" onclick="abortSession()">途中終了</button>
-                <button class="btn btn-finish" id="btn-complete" onclick="completeSession()" disabled>完了送信</button>
-                <button class="btn btn-torch" id="btn-torch" onclick="toggleTorch()" title="ライト切替">🔦</button>
+                <button class="btn btn-abort" onclick="abortSession()">終了</button>
+                <button class="btn btn-finish" id="btn-complete" onclick="completeSession()" disabled>送信</button>
+                <button class="btn btn-light" id="btn-light" onclick="toggleLight()" title="ライト切り替え">💡</button>
             </div>
         </div>
 
         <!-- SCREEN 3: 中断画面 -->
-        <div id="screen-pause" class="screen">
-            <div class="pause-screen">
+        <div id="screen-pause" class="screen pause-screen">
+            <div class="card" style="width: 100%;">
                 <h2>作業を中断しています</h2>
                 <button class="btn-resume" onclick="resumeSession()">作業を再開する</button>
             </div>
@@ -165,7 +176,7 @@
 
         let currentStaff = "";
         let html5QrCode = null;
-        let torchEnabled = false;
+        let isLightOn = false;
 
         function playBeepSound() {
             try {
@@ -206,9 +217,10 @@
             switchScreen('screen-main');
             renderCheckpoints();
             
+            // DOM描画完了を少し待ってから確実にカメラを起動
             setTimeout(() => {
                 startCamera();
-            }, 100);
+            }, 150);
         }
 
         function startCamera() {
@@ -220,12 +232,19 @@
 
             html5QrCode = new Html5Qrcode("reader");
 
+            const config = {
+                fps: 15,
+                qrbox: function(viewfinderWidth, viewfinderHeight) {
+                    // コンテナサイズに応じた適切なスキャン枠サイズを動的計算
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const size = Math.floor(minEdge * 0.7);
+                    return { width: size, height: size };
+                }
+            };
+
             html5QrCode.start(
                 { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 150, height: 150 }
-                },
+                config,
                 (text) => {
                     checkpoints.forEach(cp => {
                         if (cp.id === text && cp.status === 0) {
@@ -236,35 +255,32 @@
                         }
                     });
                 },
-                (errorMessage) => {}
+                (errorMessage) => {
+                    // スキャン中の通常エラー（検出なし等）は無視
+                }
             ).catch(err => {
-                console.log("カメラ自動起動エラー:", err);
+                console.log("カメラ起動エラー:", err);
             });
         }
 
-        // ライト（トーチ）のON/OFF切り替え
-        async function toggleTorch() {
+        // ライト（フラッシュライト）の切り替え関数
+        async function toggleLight() {
             if (!html5QrCode) return;
             try {
-                const track = html5QrCode.getRunningTrack();
-                if (!track) {
-                    alert("カメラが動作していません");
-                    return;
-                }
-                torchEnabled = !torchEnabled;
-                await track.applyConstraints({
-                    advanced: [{ torch: torchEnabled }]
+                isLightOn = !isLightOn;
+                await html5QrCode.applyVideoConstraints({
+                    advanced: [{ torch: isLightOn }]
                 });
-                const torchBtn = document.getElementById('btn-torch');
-                if (torchEnabled) {
-                    torchBtn.classList.add('active');
+                const lightBtn = document.getElementById('btn-light');
+                if (isLightOn) {
+                    lightBtn.classList.add('active');
                 } else {
-                    torchBtn.classList.remove('active');
+                    lightBtn.classList.remove('active');
                 }
             } catch (err) {
-                console.log("ライト（トーチ）非対応の端末またはエラー:", err);
-                alert("お使いの環境またはカメラではライト機能を利用できません。");
-                torchEnabled = !torchEnabled; // 状態を戻す
+                console.log("ライト機能非対応またはエラー:", err);
+                isLightOn = !isLightOn; // 失敗時は状態を戻す
+                alert("この端末やブラウザではライト機能を利用できません。");
             }
         }
 
@@ -292,7 +308,7 @@
 
                 let statusText = "未チェック";
                 if (cp.status === 1) statusText = "● QR読取完了";
-                if (cp.status === 2) statusText = "● 手動完了";
+                if (cp.status === 2) statusText = "● 手動チェック完了";
 
                 item.innerHTML = `
                     <div class="cp-info">
@@ -333,12 +349,10 @@
                     html5QrCode = null;
                 }
             }
-            torchEnabled = false;
-            document.getElementById('btn-torch').classList.remove('active');
         }
 
         function pauseSession() { stopCamera(); switchScreen('screen-pause'); }
-        function resumeSession() { switchScreen('screen-main'); setTimeout(startCamera, 100); }
+        function resumeSession() { switchScreen('screen-main'); setTimeout(startCamera, 150); }
         function abortSession() { if (confirm("途中終了しますか？")) sendDataToSheet("途中終了"); }
         function completeSession() { if (confirm("完了して送信しますか？")) sendDataToSheet("正常完了"); }
 
@@ -366,13 +380,14 @@
                 console.error("送信エラー:", error);
                 alert("送信に失敗しました。");
                 switchScreen('screen-main');
-                setTimeout(startCamera, 100);
+                setTimeout(startCamera, 150);
             });
         }
 
         function resetApp() {
             checkpoints.forEach(cp => cp.status = 0);
             currentStaff = "";
+            isLightOn = false;
             document.getElementById('display-staff-name').innerText = "未選択";
             switchScreen('screen-staff');
         }
