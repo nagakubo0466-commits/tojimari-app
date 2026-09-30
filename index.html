@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>戸締り確認アプリ</title>
-    <!-- jsQRライブラリの読み込み -->
-    <script src="https://cdn.jsdelivr.net/npm/jsQR@1.4.0/dist/jsQR.min.js"></script>
+    <!-- 安定動作実績のある html5-qrcode ライブラリ -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -37,18 +37,22 @@
             position: relative;
             background: #000;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
-        #webcam {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        /* html5-qrcodeが生成する要素のスタイル調整 */
+        #reader {
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
         }
-        #canvas {
-            display: none;
+        #reader video {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: 100% !important;
         }
+        #reader__dashboard_section_csr, #reader__dashboard_section_swaplink {
+            display: none !important;
+        }
+
         .counter-container {
             width: 50%;
             height: 100%;
@@ -161,26 +165,28 @@
         .btn-pause { background-color: #ff9800; color: white; }
         .btn-abort { background-color: #f44336; color: white; }
         .btn-finish { background-color: #4CAF50; color: white; }
+
+        /* ローディング画面 */
+        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; }
     </style>
 </head>
 <body>
 
+    <div id="loading-overlay">データを送信中...</div>
+
     <!-- 上部1/4：カメラとカウンター -->
     <div class="top-section">
         <div class="camera-container">
-            <video id="webcam" playsinline autoplay muted></video>
-            <canvas id="canvas"></canvas>
+            <div id="reader"></div>
         </div>
         <div class="counter-container">
-            <div id="staffLabel" class="staff-display">担当: -</div>
+            <div id="staffLabel" class="staff-display">担当: 西巻</div>
             <div id="counter" class="counter-value">0/35</div>
         </div>
     </div>
 
     <!-- 中央2/4：ポイント一覧 -->
-    <div class="middle-section" id="pointListContainer">
-        <!-- JavaScriptで自動生成されます -->
-    </div>
+    <div class="middle-section" id="pointListContainer"></div>
 
     <!-- 下1/4：各種ボタン -->
     <div class="bottom-section">
@@ -198,7 +204,6 @@
         // ★ここにGASのウェブアプリURLを貼り付けてください
         const GAS_URL = "【ここにGASのウェブアプリURLを貼り付け】";
 
-        // 正式な35箇所のポイントデータ
         let checkpoints = [
             { id: "POINT_01", category: "執務室", name: "窓2ヶ所", status: 0 },
             { id: "POINT_02", category: "執務室", name: "レジ", status: 0 },
@@ -237,15 +242,15 @@
             { id: "POINT_35", category: "研修室", name: "空調", status: 0 }
         ];
 
-        let currentStaff = "西巻"; // 担当者（必要に応じて変更可能）
+        let currentStaff = "西巻";
+        let html5QrCode = null;
         let trackStream = null;
         let torchActive = false;
 
-        function initApp() {
-            document.getElementById('staffLabel').textContent = `担当: ${currentStaff}`;
+        window.addEventListener('DOMContentLoaded', () => {
             renderPoints();
             startCamera();
-        }
+        });
 
         function renderPoints() {
             const container = document.getElementById('pointListContainer');
@@ -256,7 +261,6 @@
             checkpoints.forEach((p, index) => {
                 if (p.status > 0) checkedCount++;
 
-                // カテゴリ見出しの挿入
                 if (p.category !== lastCategory) {
                     const catHeader = document.createElement('div');
                     catHeader.className = 'category-header';
@@ -292,65 +296,53 @@
             renderPoints();
         }
 
-        // カメラ起動とQR読み取り（jsQR使用）
-        async function startCamera() {
-            const video = document.getElementById('webcam');
-            const canvasElement = document.getElementById('canvas');
-            const canvas = canvasElement.getContext('2d', {willReadFrequently: true});
+        // カメラ起動とQRスキャン（html5-qrcodeを使用）
+        function startCamera() {
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 150, height: 150 } };
 
-            try {
-                const constraints = {
-                    video: {
-                        facingMode: { ideal: "environment" },
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    let target = checkpoints.find(p => p.id === decodedText);
+                    if (target && target.status === 0) {
+                        target.status = 1;
+                        renderPoints();
+                        if (navigator.vibrate) navigator.vibrate(200);
                     }
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-                trackStream = stream.getVideoTracks()[0];
-                video.setAttribute('playsinline', true);
-                video.play();
-
-                requestAnimationFrame(tick);
-            } catch (err) {
+                },
+                (errorMessage) => {}
+            ).then(() => {
+                // カメラのトラックを取得してライト制御に備える
+                try {
+                    const videoElement = document.querySelector("#reader video");
+                    if (videoElement && videoElement.srcObject) {
+                        trackStream = videoElement.srcObject.getVideoTracks()[0];
+                    }
+                } catch(e) {}
+            }).catch(err => {
                 console.error("カメラ起動エラー:", err);
-            }
-
-            function tick() {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    canvasElement.height = video.videoHeight;
-                    canvasElement.width = video.videoWidth;
-                    canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-                    const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-                    
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "dontInvert",
-                    });
-
-                    if (code) {
-                        handleQRCode(code.data);
-                    }
-                }
-                requestAnimationFrame(tick);
-            }
+            });
         }
 
-        function handleQRCode(data) {
-            let target = checkpoints.find(p => p.id === data);
-            if (target && target.status === 0) {
-                target.status = 1;
-                renderPoints();
-                if (navigator.vibrate) navigator.vibrate(200);
-            }
-        }
-
-        // ライト（トーチ）のON/OFF
+        // ライト制御
         async function toggleLight() {
             if (!trackStream) {
-                alert("カメラが起動していません");
+                // トラックが直接取れていない場合の再取得トライ
+                try {
+                    const videoElement = document.querySelector("#reader video");
+                    if (videoElement && videoElement.srcObject) {
+                        trackStream = videoElement.srcObject.getVideoTracks()[0];
+                    }
+                } catch(e) {}
+            }
+
+            if (!trackStream) {
+                alert("カメラのライトを操作できません");
                 return;
             }
+
             try {
                 torchActive = !torchActive;
                 await trackStream.applyConstraints({
@@ -363,7 +355,7 @@
                     btn.classList.remove('active');
                 }
             } catch (err) {
-                alert("この端末・ブラウザではライトを制御できません。");
+                alert("この端末・ブラウザではライトに対応していません。");
                 torchActive = !torchActive;
             }
         }
@@ -388,6 +380,8 @@
                 }
             }
 
+            document.getElementById('loading-overlay').style.display = 'flex';
+
             const payload = {
                 staff: currentStaff,
                 mode: "正常完了",
@@ -400,15 +394,15 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             }).then(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
                 alert("データをスプレッドシートに送信しました！");
                 location.reload();
             }).catch(error => {
+                document.getElementById('loading-overlay').style.display = 'none';
                 console.error("送信エラー:", error);
                 alert("送信に失敗しました。");
             });
         }
-
-        window.onload = initApp;
     </script>
 </body>
 </html>
