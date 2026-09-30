@@ -9,6 +9,8 @@
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
             --success-color: #27ae60;
+            --warning-color: #e67e22;
+            --danger-color: #e74c3c;
             --bg-color: #f8f9fa;
             --text-color: #333;
             --border-color: #e0e0e0;
@@ -34,7 +36,7 @@
         header {
             background-color: var(--primary-color);
             color: white;
-            padding: 16px 20px;
+            padding: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -43,15 +45,15 @@
         }
 
         header h1 {
-            font-size: 1.25rem;
+            font-size: 1.3rem;
             font-weight: bold;
         }
 
         .header-counter {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: bold;
             background: rgba(255,255,255,0.2);
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 20px;
         }
 
@@ -63,6 +65,7 @@
             max-width: 600px;
             width: 100%;
             margin: 0 auto;
+            position: relative;
         }
 
         .section-title {
@@ -139,12 +142,41 @@
             display: block;
         }
 
+        /* 中断中画面オーバーレイ */
+        .pause-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .pause-overlay.active {
+            display: flex;
+        }
+
+        .pause-message {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--warning-color);
+            margin-bottom: 24px;
+        }
+
         /* フッター・操作パネル */
         footer {
             background: white;
             border-top: 1px solid var(--border-color);
             padding: 16px;
             display: flex;
+            flex-direction: column;
             gap: 10px;
             max-width: 600px;
             width: 100%;
@@ -152,35 +184,45 @@
             flex-shrink: 0;
         }
 
+        .footer-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
         .btn {
             flex: 1;
-            padding: 14px;
-            font-size: 1rem;
+            padding: 12px 8px;
+            font-size: 0.95rem;
             font-weight: bold;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             text-align: center;
-            transition: background 0.2s;
+            transition: background 0.2s, opacity 0.2s;
         }
 
-        .btn-secondary {
-            background-color: #95a5a6;
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-pause {
+            background-color: var(--warning-color);
             color: white;
         }
+        .btn-pause:hover { background-color: #d35400; }
 
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-
-        .btn-primary {
-            background-color: var(--secondary-color);
+        .btn-incomplete {
+            background-color: var(--danger-color);
             color: white;
         }
+        .btn-incomplete:hover { background-color: #c0392b; }
 
-        .btn-primary:hover {
-            background-color: #2980b9;
+        .btn-complete {
+            background-color: var(--success-color);
+            color: white;
         }
+        .btn-complete:hover:not(:disabled) { background-color: #219653; }
 
         /* モーダル共通 */
         .modal {
@@ -257,43 +299,52 @@
         <div class="header-counter" id="headerCounter">0/35</div>
     </header>
 
-    <!-- メイン：チェックリスト -->
-    <main>
+    <!-- メイン：チェックリスト ＆ 中断中画面 -->
+    <main id="mainContainer">
         <div class="section-title">チェック箇所一覧</div>
         <div class="checklist" id="checklistContainer">
             <!-- JavaScriptで動的生成 -->
+        </div>
+
+        <!-- 中断中画面 -->
+        <div class="pause-overlay" id="pauseOverlay">
+            <div class="pause-message">作業を中断しています</div>
+            <button class="btn btn-complete" id="resumeBtn" style="max-width: 250px; padding: 14px;">作業を再開する</button>
         </div>
     </main>
 
     <!-- フッター -->
     <footer>
-        <button class="btn btn-secondary" id="resetBtn">リセット</button>
-        <button class="btn btn-primary" id="finishBtn">終了する</button>
+        <div class="footer-buttons">
+            <button class="btn btn-pause" id="pauseBtn">中断する</button>
+            <button class="btn btn-incomplete" id="incompleteBtn">途中終了して送信</button>
+            <button class="btn btn-complete" id="completeBtn" disabled>完了して送信</button>
+        </div>
     </footer>
 
     <!-- 報告者選択モーダル -->
     <div class="modal" id="reporterModal">
         <div class="modal-content">
-            <h3>報告者を選択してください</h3>
+            <h3 id="modalTitle">報告者を選択してください</h3>
             <div class="reporter-list" id="reporterList">
-                <!-- 担当者リストがここに入ります -->
+                <!-- 担当者リスト -->
             </div>
-            <button class="btn btn-secondary" id="closeModalBtn" style="width: 100%;">キャンセル</button>
+            <button class="btn" id="closeModalBtn" style="background: #95a5a6; color: white; width: 100%;">キャンセル</button>
         </div>
     </div>
 
     <!-- 完了メッセージモーダル -->
     <div class="modal" id="completeModal">
         <div class="modal-content">
-            <div class="complete-message" id="completeMessageText">
+            <div class="complete-message">
                 セコムをセットし、カギを掛けてお帰りください。おつかれさまでした！
             </div>
-            <button class="btn btn-primary" id="finalCloseBtn" style="width: 100%;">終了</button>
+            <button class="btn btn-complete" id="finalCloseBtn" style="width: 100%;">終了</button>
         </div>
     </div>
 
     <script>
-        // チェック箇所のサンプルデータ（全35箇所）
+        // チェックポイント名一覧（全35箇所）
         const checkItems = [
             "1階 エントランス自動ドア", "1階 事務室窓", "1階 会議室窓", "1階 給湯室勝手口", "1階 トイレ小窓",
             "2階 第1研修室窓", "2階 第2研修室窓", "2階 講師控室窓", "2階 通路非常口", "2階 女子トイレ窓",
@@ -304,18 +355,26 @@
             "別棟 倉庫A", "別棟 倉庫B", "別棟 休憩室窓", "別棟 更衣室窓", "別棟 勝手口"
         ];
 
-        // 担当者リストのサンプル
+        // 担当者（報告者）の名前リスト
         const reporters = ["佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤"];
 
         // 状態管理
         let checkedState = new Array(checkItems.length).fill(false);
+        let pendingStatus = ""; // "完了" または "途中終了"
+
+        // GASのウェブアプリURL（ご自身のGASデプロイURLに書き換えてください）
+        const GAS_URL = "YOUR_GAS_WEB_APP_URL_HERE";
 
         // 要素の取得
         const checklistContainer = document.getElementById('checklistContainer');
         const headerCounter = document.getElementById('headerCounter');
-        const resetBtn = document.getElementById('resetBtn');
-        const finishBtn = document.getElementById('finishBtn');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const incompleteBtn = document.getElementById('incompleteBtn');
+        const completeBtn = document.getElementById('completeBtn');
         const reporterModal = document.getElementById('reporterModal');
+        const modalTitle = document.getElementById('modalTitle');
         const reporterList = document.getElementById('reporterList');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const completeModal = document.getElementById('completeModal');
@@ -338,7 +397,6 @@
                     <span class="item-text">${item}</span>
                     <div class="checkbox-box"></div>
                 `;
-                // クリックでチェック／解除を切り替え
                 div.addEventListener('click', () => {
                     checkedState[index] = !checkedState[index];
                     div.classList.toggle('checked', checkedState[index]);
@@ -348,10 +406,17 @@
             });
         }
 
-        // カウンターの更新
+        // カウンターの更新と「完了して送信」ボタンの活性・非活性切替
         function updateCounter() {
             const checkedCount = checkedState.filter(Boolean).length;
             headerCounter.textContent = `${checkedCount}/${checkItems.length}`;
+
+            // 全部にチェックが入ったときのみ「完了して送信」を有効にする
+            if (checkedCount === checkItems.length) {
+                completeBtn.disabled = false;
+            } else {
+                completeBtn.disabled = true;
+            }
         }
 
         // 担当者ボタンの生成
@@ -362,27 +427,57 @@
                 btn.className = 'reporter-btn';
                 btn.textContent = name;
                 btn.addEventListener('click', () => {
-                    // 報告者が選ばれたら完了メッセージモーダルを表示
                     reporterModal.classList.remove('active');
-                    completeModal.classList.add('active');
-                    // 必要であればここでGAS等への送信処理を実装できます
-                    console.log(`報告者: ${name} さんで終了処理を実行しました。`);
+                    submitLogToGAS(pendingStatus, name);
                 });
                 reporterList.appendChild(btn);
             });
         }
 
-        // イベントリスナー
-        resetBtn.addEventListener('click', () => {
-            if (confirm('チェックをすべてリセットしますか？')) {
-                checkedState.fill(false);
-                renderChecklist();
-                updateCounter();
+        // GASへの送信処理
+        function submitLogToGAS(status, reporterName) {
+            const checkedCount = checkedState.filter(Boolean).length;
+            const payload = {
+                timestamp: new Date().toLocaleString('ja-JP'),
+                reporter: reporterName,
+                status: status,
+                checkedCount: checkedCount,
+                totalCount: checkItems.length,
+                details: checkItems.map((item, i) => ({ item: item, checked: checkedState[i] }))
+            };
+
+            if (GAS_URL !== "YOUR_GAS_WEB_APP_URL_HERE") {
+                fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(err => console.error("GAS送信エラー:", err));
+            } else {
+                console.log("送信データ模擬:", payload);
             }
+
+            completeModal.classList.add('active');
+        }
+
+        // イベントリスナー
+        pauseBtn.addEventListener('click', () => {
+            pauseOverlay.classList.add('active');
         });
 
-        finishBtn.addEventListener('click', () => {
-            // 途中終了・完了どちらでも「終了する」を押したら報告者選択へ
+        resumeBtn.addEventListener('click', () => {
+            pauseOverlay.classList.remove('active');
+        });
+
+        incompleteBtn.addEventListener('click', () => {
+            pendingStatus = "途中終了";
+            modalTitle.textContent = "【途中終了】報告者を選択してください";
+            reporterModal.classList.add('active');
+        });
+
+        completeBtn.addEventListener('click', () => {
+            pendingStatus = "完了";
+            modalTitle.textContent = "【完了】報告者を選択してください";
             reporterModal.classList.add('active');
         });
 
@@ -391,11 +486,12 @@
         });
 
         finalCloseBtn.addEventListener('click', () => {
-            // アプリをリセットまたは初期状態へ
             completeModal.classList.remove('active');
+            // アプリを初期状態へリセット
             checkedState.fill(false);
             renderChecklist();
             updateCounter();
+            pauseOverlay.classList.remove('active');
         });
 
         // 起動時実行
