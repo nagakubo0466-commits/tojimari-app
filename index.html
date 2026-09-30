@@ -73,7 +73,7 @@
         .manual-toggle-btn { padding: 3px 8px; font-size: 10px; font-weight: 600; border-radius: 4px; border: 1px solid var(--gray-border); background: white; color: var(--text-sub); cursor: pointer; }
         .cp-item.done-qr .manual-toggle-btn, .cp-item.done-manual .manual-toggle-btn { border-color: var(--primary-border); color: var(--primary); }
 
-        /* 操作ボタンエリア（一覧の下に配置 ＆ ライトボタン追加） */
+        /* 操作ボタンエリア */
         .action-buttons { display: flex; gap: 6px; align-items: center; }
         .btn { flex: 1; padding: 9px 6px; border: none; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .btn:active { transform: scale(0.98); }
@@ -141,12 +141,12 @@
                 </div>
                 <div class="checkpoint-container" id="checkpoint-list"></div>
 
-                <!-- 一覧の下に配置した操作ボタン ＋ ライトボタン -->
+                <!-- 操作ボタン ＋ ライトボタン -->
                 <div class="action-buttons">
                     <button class="btn btn-pause" onclick="pauseSession()">中断する</button>
                     <button class="btn btn-abort" onclick="abortSession()">途中終了</button>
                     <button class="btn btn-finish" id="btn-complete" onclick="completeSession()" disabled>完了して送信</button>
-                    <!-- ライトボタン（正方形、上部にマーク） -->
+                    <!-- ライトボタン -->
                     <button class="btn-light" id="btn-light" onclick="toggleTorch()">
                         <span class="light-icon">💡</span>
                         <span>ライト</span>
@@ -166,7 +166,7 @@
     </div>
 
     <script>
-        // ★ここにGASのウェブアプリURLを貼り付けてください
+        // ★GASのウェブアプリURL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbysyMjWHr3xsmDFvPOkgV1dJD6dJqSbVuL6gU_5GiDWp4unCbdUiYckd910gORozWIv/exec";
 
         const staffList = ["西巻", "篠田", "田邊", "伴野", "磯谷", "岡本", "遠藤", "ゲスト"];
@@ -277,7 +277,6 @@
             }
         }
 
-        // カメラライト（トーチ）の切り替え
         async function toggleTorch() {
             if (!mediaStream) return;
             const track = mediaStream.getVideoTracks()[0];
