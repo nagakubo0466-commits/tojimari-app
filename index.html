@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>戸締り確認アプリ</title>
-    <!-- jsQRライブラリの読み込み（読み取り精度・速度向上） -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- jsQRライブラリの読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/jsQR@1.4.0/dist/jsQR.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -65,11 +65,6 @@
             margin-bottom: 2px;
             font-weight: bold;
         }
-        .counter-title {
-            font-size: 11px;
-            color: #888;
-            margin-bottom: 2px;
-        }
         .counter-value {
             font-size: 28px;
             font-weight: bold;
@@ -83,12 +78,24 @@
             overflow-y: auto;
             padding: 8px;
         }
+        .category-header {
+            background: #e8f0fe;
+            color: #1a73e8;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 6px 10px;
+            margin-top: 6px;
+            border-radius: 4px;
+        }
+        .category-header:first-child {
+            margin-top: 0;
+        }
         .point-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 12px;
-            margin-bottom: 6px;
+            padding: 8px 10px;
+            margin-top: 4px;
             background: #f8f9fa;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
@@ -165,8 +172,7 @@
             <canvas id="canvas"></canvas>
         </div>
         <div class="counter-container">
-            <div id="staffLabel" class="staff-display">担当者: -</div>
-            <div class="counter-title">確認数</div>
+            <div id="staffLabel" class="staff-display">担当: -</div>
             <div id="counter" class="counter-value">0/35</div>
         </div>
     </div>
@@ -184,27 +190,59 @@
             <button class="btn btn-abort" onclick="abortCheck()">途中終了</button>
         </div>
         <div>
-            <button class="btn btn-finish" style="width: 100%; padding: 10px; font-size: 14px;" onclick="finishCheck()">完了</button>
+            <button class="btn btn-finish" style="width: 100%; padding: 10px; font-size: 14px;" onclick="finishCheck()">完了して送信</button>
         </div>
     </div>
 
     <script>
         // ★ここにGASのウェブアプリURLを貼り付けてください
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbz.../exec";
+        const GAS_URL = "【ここにGASのウェブアプリURLを貼り付け】";
 
-        // サンプル用ポイントデータ（35箇所）
-        let points = Array.from({ length: 35 }, (_, i) => ({
-            id: String(i + 1),
-            name: `確認ポイント ${i + 1}`,
-            checked: false
-        }));
+        // 正式な35箇所のポイントデータ
+        let checkpoints = [
+            { id: "POINT_01", category: "執務室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_02", category: "執務室", name: "レジ", status: 0 },
+            { id: "POINT_03", category: "執務室", name: "金庫", status: 0 },
+            { id: "POINT_04", category: "執務室", name: "パソコン", status: 0 },
+            { id: "POINT_05", category: "執務室", name: "キャビネ横長2ヶ所", status: 0 },
+            { id: "POINT_06", category: "執務室", name: "キャビネ書類4ヶ所", status: 0 },
+            { id: "POINT_07", category: "執務室", name: "電灯・空調", status: 0 },
+            { id: "POINT_08", category: "執務室", name: "温室暖房制御盤(冬)", status: 0 },
+            { id: "POINT_09", category: "執務室", name: "扇風機", status: 0 },
+            { id: "POINT_10", category: "執務室", name: "展示室側のカギ", status: 0 },
+            { id: "POINT_11", category: "休憩室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_12", category: "休憩室", name: "ﾎﾟｯﾄ・ﾚﾝｼﾞ電源", status: 0 },
+            { id: "POINT_13", category: "休憩室", name: "電灯・空調", status: 0 },
+            { id: "POINT_14", category: "休憩室", name: "温水器", status: 0 },
+            { id: "POINT_15", category: "休憩室", name: "扇風機", status: 0 },
+            { id: "POINT_16", category: "図書室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_17", category: "図書室", name: "電灯・空調", status: 0 },
+            { id: "POINT_18", category: "図書室", name: "ベジチェック", status: 0 },
+            { id: "POINT_19", category: "展示ホール", name: "扇風機", status: 0 },
+            { id: "POINT_20", category: "展示ホール", name: "電灯・空調", status: 0 },
+            { id: "POINT_21", category: "展示ホール", name: "ドア3ヶ所", status: 0 },
+            { id: "POINT_22", category: "展示ホール", name: "倉庫電灯", status: 0 },
+            { id: "POINT_23", category: "エレベータ", name: "止めていないか", status: 0 },
+            { id: "POINT_24", category: "廊下", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_25", category: "トイレ", name: "男子", status: 0 },
+            { id: "POINT_26", category: "トイレ", name: "女子", status: 0 },
+            { id: "POINT_27", category: "温室", name: "ドア（駐車場側）", status: 0 },
+            { id: "POINT_28", category: "温室", name: "倉庫電灯2ヶ所", status: 0 },
+            { id: "POINT_29", category: "出入口", name: "セコム", status: 0 },
+            { id: "POINT_30", category: "出入口", name: "施錠", status: 0 },
+            { id: "POINT_31", category: "会議室", name: "窓2ヶ所", status: 0 },
+            { id: "POINT_32", category: "会議室", name: "電灯・空調", status: 0 },
+            { id: "POINT_33", category: "研修室", name: "窓4ヶ所", status: 0 },
+            { id: "POINT_34", category: "研修室", name: "電灯3ヶ所", status: 0 },
+            { id: "POINT_35", category: "研修室", name: "空調", status: 0 }
+        ];
 
-        let staffName = "山田 太郎"; // テスト用（実際は起動時やURLパラメータ等から取得）
+        let currentStaff = "西巻"; // 担当者（必要に応じて変更可能）
         let trackStream = null;
         let torchActive = false;
 
         function initApp() {
-            document.getElementById('staffLabel').textContent = `担当者: ${staffName}`;
+            document.getElementById('staffLabel').textContent = `担当: ${currentStaff}`;
             renderPoints();
             startCamera();
         }
@@ -213,22 +251,48 @@
             const container = document.getElementById('pointListContainer');
             container.innerHTML = '';
             let checkedCount = 0;
+            let lastCategory = "";
 
-            points.forEach(p => {
-                if (p.checked) checkedCount++;
+            checkpoints.forEach((p, index) => {
+                if (p.status > 0) checkedCount++;
+
+                // カテゴリ見出しの挿入
+                if (p.category !== lastCategory) {
+                    const catHeader = document.createElement('div');
+                    catHeader.className = 'category-header';
+                    catHeader.textContent = `● ${p.category}`;
+                    container.appendChild(catHeader);
+                    lastCategory = p.category;
+                }
+
                 const div = document.createElement('div');
-                div.className = `point-item ${p.checked ? 'checked' : ''}`;
+                div.className = `point-item ${p.status > 0 ? 'checked' : ''}`;
+                
+                let statusText = "未確認";
+                if (p.status === 1) statusText = "QR完了";
+                if (p.status === 2) statusText = "手動OK";
+
                 div.innerHTML = `
                     <span class="point-name">${p.name}</span>
-                    <span class="point-status">${p.checked ? '確認済' : '未確認'}</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="point-status">${statusText}</span>
+                        <button style="padding:4px 8px; font-size:11px; border:1px solid #ccc; background:#fff; border-radius:4px; cursor:pointer;" onclick="toggleManual(${index})">
+                            ${p.status > 0 ? '解除' : '手動'}
+                        </button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
 
-            document.getElementById('counter').textContent = `${checkedCount}/${points.length}`;
+            document.getElementById('counter').textContent = `${checkedCount}/${checkpoints.length}`;
         }
 
-        // カメラ起動とQR読み取りの高速化・高精度化（jsQR使用）
+        function toggleManual(index) {
+            checkpoints[index].status = checkpoints[index].status === 0 ? 2 : 0;
+            renderPoints();
+        }
+
+        // カメラ起動とQR読み取り（jsQR使用）
         async function startCamera() {
             const video = document.getElementById('webcam');
             const canvasElement = document.getElementById('canvas');
@@ -251,7 +315,6 @@
                 requestAnimationFrame(tick);
             } catch (err) {
                 console.error("カメラ起動エラー:", err);
-                alert("カメラを起動できませんでした。権限を確認してください。");
             }
 
             function tick() {
@@ -261,7 +324,6 @@
                     canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
                     const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
                     
-                    // jsQRで解析
                     const code = jsQR(imageData.data, imageData.width, imageData.height, {
                         inversionAttempts: "dontInvert",
                     });
@@ -274,20 +336,16 @@
             }
         }
 
-        // QRコード読み取り時の処理
         function handleQRCode(data) {
-            console.log("読み取ったデータ:", data);
-            // 一致するポイントを探してチェックを入れる
-            let target = points.find(p => p.id === data || p.name === data);
-            if (target && !target.checked) {
-                target.checked = true;
+            let target = checkpoints.find(p => p.id === data);
+            if (target && target.status === 0) {
+                target.status = 1;
                 renderPoints();
-                // 読み取り成功音の代わりのバイブレーション（対応端末のみ）
                 if (navigator.vibrate) navigator.vibrate(200);
             }
         }
 
-        // ライト（トーチ）のON/OFF切り替え
+        // ライト（トーチ）のON/OFF
         async function toggleLight() {
             if (!trackStream) {
                 alert("カメラが起動していません");
@@ -305,7 +363,6 @@
                     btn.classList.remove('active');
                 }
             } catch (err) {
-                console.error("ライト制御エラー:", err);
                 alert("この端末・ブラウザではライトを制御できません。");
                 torchActive = !torchActive;
             }
@@ -318,20 +375,37 @@
         }
 
         function abortCheck() {
-            if (confirm("途中終了しますか？（未確認のデータは破棄されます）")) {
+            if (confirm("途中終了しますか？")) {
                 location.reload();
             }
         }
 
         function finishCheck() {
-            const uncheckedCount = points.filter(p => !p.checked).length;
+            const uncheckedCount = checkpoints.filter(p => p.status === 0).length;
             if (uncheckedCount > 0) {
-                if (!confirm(`まだ未確認のポイントが ${uncheckedCount} 箇所あります。このまま完了しますか？`)) {
+                if (!confirm(`まだ未確認のポイントが ${uncheckedCount} 箇所あります。送信しますか？`)) {
                     return;
                 }
             }
-            alert("完了データを送信しました！");
-            // ここにGASへのデータ送信処理などを記述できます
+
+            const payload = {
+                staff: currentStaff,
+                mode: "正常完了",
+                details: checkpoints.map(cp => ({ name: `${cp.category} - ${cp.name}`, status: cp.status }))
+            };
+
+            fetch(GAS_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                alert("データをスプレッドシートに送信しました！");
+                location.reload();
+            }).catch(error => {
+                console.error("送信エラー:", error);
+                alert("送信に失敗しました。");
+            });
         }
 
         window.onload = initApp;
