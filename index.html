@@ -24,32 +24,30 @@
             --text-sub: #64748b;
         }
 
-        
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--gray-bg); color: var(--text-main); line-height: 1.5; }
 
-        header { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; }
-        #header-staff { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        header { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        header h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; }
+        #header-staff { background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
 
-        .container { max-width: 600px; margin: 0 auto; padding: 12px; }
-        .card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1); border: 1px solid var(--gray-border); }
+        .container { max-width: 600px; margin: 0 auto; padding: 10px; }
+        .card { background: white; border-radius: 12px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--gray-border); }
         
         /* 画面切り替え用クラス */
         .screen { display: none; }
         .screen.active { display: block; }
 
         /* 担当者選択画面 */
-        .staff-selection-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text-main); text-align: center; }
-        .staff-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 360px; overflow-y: auto; padding: 2px; }
-        .staff-btn { padding: 14px; background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 8px; font-size: 15px; font-weight: 700; color: var(--primary); text-align: center; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
-        .staff-btn:hover { background: #dbeafe; transform: translateY(-1px); }
-        .staff-btn:active { background: #bfdbfe; transform: translateY(0); }
+        .staff-selection-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--text-main); text-align: center; }
+        .staff-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 380px; overflow-y: auto; padding: 2px; }
+        .staff-btn { padding: 12px; background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 8px; font-size: 14px; font-weight: 700; color: var(--primary); text-align: center; cursor: pointer; transition: all 0.2s ease; }
+        .staff-btn:hover { background: #dbeafe; }
 
-        /* メイン画面：カメラ領域をコンパクトに固定し、一覧の視認性を確保 */
-        .top-section { display: flex; gap: 8px; margin-bottom: 10px; align-items: stretch; }
+        /* メイン画面：カメラ高さを「180px」に調整して確実に読み取れるようにする */
+        .top-section { display: flex; gap: 8px; margin-bottom: 8px; align-items: stretch; }
         
-        #reader-container { flex: 1; height: 110px; background: #000; border-radius: 8px; overflow: hidden; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        #reader-container { flex: 1; height: 175px; background: #000; border-radius: 8px; overflow: hidden; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
         #reader { width: 100% !important; height: 100% !important; border: none !important; }
         #reader video { 
             object-fit: cover !important; 
@@ -58,47 +56,45 @@
         }
         #reader__dashboard_section_csr { display: none; }
 
-        .progress-box { background: white; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--gray-border); padding: 8px 12px; width: 105px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
-        .progress-num { font-size: 22px; font-weight: 800; color: var(--primary); line-height: 1.2; }
-        .progress-label { font-size: 11px; color: var(--text-sub); font-weight: 600; margin-top: 2px; }
+        .progress-box { background: white; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--gray-border); padding: 6px 10px; width: 95px; }
+        .progress-num { font-size: 20px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+        .progress-label { font-size: 10px; color: var(--text-sub); font-weight: 600; margin-top: 2px; }
 
-        .action-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
-        .btn { flex: 1; padding: 10px 8px; border: none; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .action-buttons { display: flex; gap: 6px; margin-bottom: 8px; }
+        .btn { flex: 1; padding: 8px 6px; border: none; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .btn:active { transform: scale(0.98); }
         .btn-pause { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; }
         .btn-abort { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
         .btn-finish { background: #e6f4ea; color: var(--success); border: 1px solid #a7f3d0; }
         .btn-finish:not(:disabled) { background: var(--success); color: white; }
 
-        /* チェックリスト ＆ カテゴリ見出し（十分にスクロール・確認できるように確保） */
-        .section-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
-        .checkpoint-container { max-height: 320px; overflow-y: auto; border: 1px solid var(--gray-border); border-radius: 8px; background: white; }
-        .category-header { background: #f1f5f9; color: var(--text-main); font-weight: 700; font-size: 12px; padding: 6px 12px; border-bottom: 1px solid var(--gray-border); border-top: 1px solid var(--gray-border); letter-spacing: 0.03em; }
+        /* チェックリスト領域（スクロールして一覧を確認可能） */
+        .section-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
+        .checkpoint-container { max-height: 270px; overflow-y: auto; border: 1px solid var(--gray-border); border-radius: 6px; background: white; }
+        .category-header { background: #f1f5f9; color: var(--text-main); font-weight: 700; font-size: 11px; padding: 5px 10px; border-bottom: 1px solid var(--gray-border); border-top: 1px solid var(--gray-border); }
         .category-header:first-child { border-top: none; }
         
-        .cp-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; background: #fff; transition: background 0.2s; }
+        .cp-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-bottom: 1px solid #f1f5f9; background: #fff; }
         .cp-item:last-child { border-bottom: none; }
         .cp-item.done-qr { background: var(--success-bg); }
         .cp-item.done-manual { background: var(--warning-bg); }
         .cp-info { flex: 1; }
-        .cp-name { font-size: 14px; font-weight: 600; color: var(--text-main); }
-        .cp-status { font-size: 11px; color: var(--text-sub); margin-top: 1px; font-weight: 500; }
+        .cp-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .cp-status { font-size: 10px; color: var(--text-sub); margin-top: 1px; font-weight: 500; }
         .cp-item.done-qr .cp-status { color: var(--success); font-weight: 700; }
         .cp-item.done-manual .cp-status { color: var(--warning); font-weight: 700; }
 
-        .manual-toggle-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid var(--gray-border); background: white; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
-        .cp-item.done-qr .manual-toggle-btn, .cp-item.done-manual .manual-toggle-btn { border-color: var(--primary-border); color: var(--primary); background: white; }
-        .manual-toggle-btn:hover { background: #f8fafc; }
+        .manual-toggle-btn { padding: 3px 8px; font-size: 10px; font-weight: 600; border-radius: 4px; border: 1px solid var(--gray-border); background: white; color: var(--text-sub); cursor: pointer; }
+        .cp-item.done-qr .manual-toggle-btn, .cp-item.done-manual .manual-toggle-btn { border-color: var(--primary-border); color: var(--primary); }
 
         /* 中断画面 */
         .pause-screen { text-align: center; padding: 40px 20px; }
-        .pause-screen h2 { margin-bottom: 24px; color: var(--warning); font-size: 20px; }
-        .btn-resume { background: var(--primary); color: white; padding: 14px 24px; font-size: 16px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.3); transition: background 0.2s; }
-        .btn-resume:hover { background: var(--primary-dark); }
+        .pause-screen h2 { margin-bottom: 20px; color: var(--warning); font-size: 18px; }
+        .btn-resume { background: var(--primary); color: white; padding: 12px 20px; font-size: 15px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.3); }
 
         /* ローディング画面 */
-        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(2px); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-direction: column; gap: 12px; }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; }
+        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(2px); z-index: 999; color: white; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-direction: column; gap: 10px; }
+        .spinner { width: 36px; height: 36px; border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -124,7 +120,7 @@
             </div>
         </div>
 
-        <!-- SCREEN 2: メイン（コンパクトなカメラ ＆ 常時見える一覧） -->
+        <!-- SCREEN 2: メイン（程よい大きさのカメラ ＆ 一覧） -->
         <div id="screen-main" class="screen">
             <div class="top-section">
                 <div id="reader-container">
@@ -142,7 +138,7 @@
                 <button class="btn btn-finish" id="btn-complete" onclick="completeSession()" disabled>完了して送信</button>
             </div>
 
-            <div class="card" style="padding: 10px 12px; margin-bottom: 0;">
+            <div class="card" style="padding: 8px 10px; margin-bottom: 0;">
                 <div class="section-title">
                     <span>ポイント一覧</span>
                 </div>
@@ -261,7 +257,7 @@
                 { facingMode: "environment" },
                 {
                     fps: 10,
-                    qrbox: { width: 150, height: 150 } // 読み取りやすいサイズのまま維持
+                    qrbox: { width: 200, height: 200 } // しっかり読み取れる大きさに復元
                 },
                 (text) => {
                     checkpoints.forEach(cp => {
